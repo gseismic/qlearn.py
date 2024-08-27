@@ -11,7 +11,7 @@ torch.manual_seed(36)
 def test_grid_world():
     env = GridWorld(shape=(3, 5))
     episode = env.generate_episode(env.random_policy)
-    print(episode)
+    # print(episode)
     # 动画
     # env.animate_episode(episode, interval=100)
 
