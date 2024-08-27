@@ -1,2 +1,2 @@
-#from .discrete_model import DiscreteModel
 from .value_iteration import value_iteration_learn
+from .policy_iteration import policy_iteration_learn

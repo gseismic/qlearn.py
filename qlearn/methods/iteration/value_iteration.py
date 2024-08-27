@@ -4,7 +4,7 @@ from ...logger import sys_logger
 
 
 def value_iteration_learn(env, initial_state_values, gamma, eps_exit=1e-6, 
-                          max_iter: int = 100, logger=None,
+                          max_iter: int = 500, logger=None,
                           verbose_freq=10):
     """Learn by value iteration Method
     Args:
@@ -21,26 +21,25 @@ def value_iteration_learn(env, initial_state_values, gamma, eps_exit=1e-6,
 
     policy_table = torch.zeros(len(states), len(actions))
     Q_table = torch.zeros(len(states), len(actions))
-    exit_code = -999
-    chg_norm = None
 
+    exit_code = -999
     i_iter = -1
     prev_state_values = torch.ones((len(states),))*float('-inf')
     while True:
         i_iter += 1
         if i_iter >= max_iter:
             exit_code = ExitCode.EXIT_REACH_MAX_ITER
-            logger.warning(f'Exit: Reach Max-Iter: norm: {chg_norm}')
+            logger.warning(f'Exit: Reach Max-Iter: dif-norm: {chg_norm}')
             break
 
         value_dif = state_values - prev_state_values
         chg_norm = torch.norm(value_dif, p=2)
-        if (i_iter+1) % verbose_freq == 0:
-            logger.info(f'{i_iter+1}/{max_iter}: dif_norm: {chg_norm:.6f}')
         if chg_norm < eps_exit:
             exit_code = ExitCode.EXIT_SUCC
             logger.info(f'Exit: Succ: norm: {chg_norm}')
             break
+        elif (i_iter+1) % verbose_freq == 0:
+            logger.info(f'{i_iter+1}/{max_iter}: dif-norm: {chg_norm:.6f}')
 
         for i, state in enumerate(states):
             for j, action in enumerate(actions):

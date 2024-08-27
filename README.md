@@ -10,6 +10,7 @@ Reinforcement Learning Collection Library
 - [ ] Q-learning[off-policy]
 - [ ] DQN
 - [ ] dual-DQN
+
 ### Policy Gradient Methods
 - [ ] Monte (REINFORCE)
 - [ ] TRPO
@@ -19,3 +20,4 @@ Reinforcement Learning Collection Library
 
 ## ChangeLog
 - [@2024-08-23] 项目创建project created
+- [@2024-08-28] add: state-value-iteration method
