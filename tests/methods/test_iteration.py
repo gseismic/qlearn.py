@@ -6,14 +6,11 @@ from qlearn.methods.iteration import (
 )
 from qlearn.envs.grid_world import GridWorld
 import torch
+import random
+random.seed(36)
+np.random.seed(36)
 torch.manual_seed(36)
 
-def test_grid_world():
-    env = GridWorld(shape=(3, 5))
-    episode = env.generate_episode(env.random_policy)
-    # print(episode)
-    # 动画
-    # env.animate_episode(episode, interval=100)
 
 def test_value_iteration_basic():
     target_state=(5,8)
@@ -43,10 +40,10 @@ def test_value_iteration_basic():
 
     print(f'{Q_table=}')
     print(f'{policy_table=}')
-    episode = env.generate_episode(policy)
+    episode, done = env.generate_episode(policy, (0,0))
     print(f'{episode=}')
     # 动画
-    # env.animate_episode(episode, interval=500)
+    # env.animate_episode(episode, interval=200)
 
 def test_policy_iteration_basic():
     target_state=(5,8)
@@ -86,17 +83,15 @@ def test_policy_iteration_basic():
         action = env.action_space[max_index.item()]
         return action
 
-    # print(f'{Q_table=}')
-    # print(f'{policy_table=}')
-    episode = env.generate_episode(policy)
+    torch.set_printoptions(precision=9)
+    print(f'{Q_table=}')
+    print(f'{policy_table=}')
+    episode, done = env.generate_episode(policy, (0,0))
     print(f'{episode=}')
     # 动画
     env.animate_episode(episode, interval=500)
 
-
 if __name__ == '__main__':
-    if 0:
-        test_grid_world()
     if 0:
         test_value_iteration_basic()
     if 1:

@@ -12,7 +12,8 @@ def policy_iteration_learn(env, initial_policy_table,
                            j_eval_method='gauss-seidel',
                            eps_exit=1e-6, 
                            exit_if_policy_stable=True,
-                           max_iter: int = 500, logger=None,
+                           max_iter: int = 500, 
+                           logger=None,
                            j_verbose_freq=None,
                            verbose_freq=10,
                            verbose=1):
@@ -35,14 +36,13 @@ def policy_iteration_learn(env, initial_policy_table,
     assert j_eval_method in ['jacobi', 'gauss-seidel', 'gs']
     assert max_iter >= 1
     assert initial_policy_table.shape == (len(env.state_space),
-                                    len(env.action_space))
+                                          len(env.action_space))
     assert j_trunc is None or j_trunc > 0
     assert j_trunc_min is None or j_trunc_min >= 1
     if j_trunc_min is None and j_trunc is None:
         assert j_trunc_min <= j_trunc
 
-    states = env.observation_space
-    actions = env.action_space
+    states, actions = env.observation_space, env.action_space
     logger = logger or sys_logger
 
     Q_table = torch.zeros(len(states), len(actions))

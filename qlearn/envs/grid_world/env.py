@@ -25,8 +25,8 @@ class GridWorld(DiscreteEnv_S):
         super(GridWorld, self).__init__(observation_space=observation_space,
                                         action_space=action_space)
 
-    def reset(self):
-        self.state = self.initial_state
+    def reset(self, state=None):
+        self.state = self.initial_state if state is None else state
         return self.state
 
     def get_next_state_probs(self, state, action):
@@ -36,6 +36,7 @@ class GridWorld(DiscreteEnv_S):
 
     def get_next_state(self, state, action):
         # 更广义的应该是一个概率分布
+        # print(f'get_next_state: {state, action=}')
         assert action in self.action_space
         irow, icol = state
         if action == '^': # 上
@@ -48,6 +49,7 @@ class GridWorld(DiscreteEnv_S):
             next_state = (irow, min(icol + 1, self.shape[1]- 1))
         else:
             raise ValueError(f'unknown action(`{action}`)')
+
         return next_state
 
     def get_reward(self, state, action, next_state):
@@ -55,6 +57,7 @@ class GridWorld(DiscreteEnv_S):
         return reward
 
     def step(self, action):
+        # print(f'step: {self.state, action=}')
         next_state = self.get_next_state(self.state, action)
         reward = self.fn_reward(self.state, action, next_state)
         if next_state == self.target_state:
