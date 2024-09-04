@@ -1,8 +1,6 @@
 import torch
-from ...core.agent import Agent
-from ...errcode import ExitCode
-from .table_agent import TableAgent
-
+from ..errcode import ExitCode
+from ...core.agent import TableAgent
 
 class PolicyTableAgent(TableAgent):
     """policy iteration Method

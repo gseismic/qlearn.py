@@ -3,6 +3,8 @@ Reinforcement Learning Library
 强化学习库[在开发中 Developing]
 
 ## Reference
+- 《Math Foundation of Reinforcement Learning》by [Shiyu Zhao]
+- 《深度强化学习》by Wang Shuseng 王树森
 - gym 
 - stable-baselines3
 - more ..
@@ -10,8 +12,8 @@ Reinforcement Learning Library
 ## Methods
 - [x] StateTableAgent | Value-Iteration Method
 - [x] PolicyTableAgent | Policy-Iteration Method (with Truncate option)
+- [x] QTableAgent | Tablar-Q-learning[on-policy]
 - [ ] Sarsa
-- [ ] Q-learning[on-policy]
 - [ ] Q-learning[off-policy]
 - [ ] DQN
 - [ ] dual-DQN
@@ -96,4 +98,4 @@ episode=[((0, 0), '^', -1), ((1, 0), '^', -1), ((2, 0), '^', -1), ((3, 0), '^', 
 ## ChangeLog
 - [@2024-08-23] 项目创建project created
 - [@2024-08-28] add: state-value-iteration method
-- [@2024-09-04] tag: v0.0.2: re-design: Agent/Env
+- [@2024-09-04] tag: v0.0.2: re-design: Agent/Env, StateTableAgent, PolicyTableAgent, QTableAgent

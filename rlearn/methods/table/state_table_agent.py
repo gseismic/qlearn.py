@@ -1,7 +1,6 @@
 import torch
-from ...core.agent import Agent
-from ...errcode import ExitCode
-from .table_agent import TableAgent
+from ..errcode import ExitCode
+from ...core.agent import TableAgent
 
 
 class StateTableAgent(TableAgent):
@@ -9,7 +8,9 @@ class StateTableAgent(TableAgent):
     def __init__(self, name, env, *args, **kwargs):
         super(StateTableAgent, self).__init__(name=name, env=env, *args, **kwargs)
 
-    def learn(self, initial_state_values, gamma, 
+    def learn(self, 
+              initial_state_values, 
+              gamma, 
               eps_exit=1e-6, 
               max_iter: int = 500, 
               verbose_freq=10):
