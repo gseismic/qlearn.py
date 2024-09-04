@@ -23,10 +23,10 @@ class TableAgent(Agent):
             action = self.env.action_space[i_action]
         return action, info
 
-    def __call__(self, state, deterministic=False):
+    def __call__(self, state, deterministic=True):
         action, _ = self.predict(state, deterministic=deterministic)
         return action
-    
+
     # @classmethod
     # def make_policy_table_from_Q(cls, Q_table, epsilon=0.1, greedy=False):
     #     """make policy table from Q table

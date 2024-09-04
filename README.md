@@ -10,10 +10,10 @@ Reinforcement Learning Library
 - more ..
 
 ## Methods
-- [x] StateTableAgent | Value-Iteration Method
-- [x] PolicyTableAgent | Policy-Iteration Method (with Truncate option)
-- [x] QTableAgent | Tablar-Q-learning[on-policy]
-- [ ] Sarsa
+- [x] StateTableAgent   | Value-Iteration Method
+- [x] PolicyTableAgent  | Policy-Iteration Method (with Truncate option)
+- [x] QTableAgent       | Tablar-Q-learning Method [on-policy]
+- [x] SarsaTableAgent   | SARSA Method [on-policy]
 - [ ] Q-learning[off-policy]
 - [ ] DQN
 - [ ] dual-DQN
@@ -98,4 +98,5 @@ episode=[((0, 0), '^', -1), ((1, 0), '^', -1), ((2, 0), '^', -1), ((3, 0), '^', 
 ## ChangeLog
 - [@2024-08-23] 项目创建project created
 - [@2024-08-28] add: state-value-iteration method
-- [@2024-09-04] tag: v0.0.2: re-design: Agent/Env, StateTableAgent, PolicyTableAgent, QTableAgent
+- [@2024-09-04] tag: v0.0.2: re-design: Agent/Env, StateTableAgent, PolicyTableAgent
+- [@2024-09-05] tag: v0.0.3: QTableAgent, SarsaTableAgent
