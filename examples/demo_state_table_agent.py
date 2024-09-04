@@ -32,6 +32,6 @@ print(f'{episode=}, {done=}')
 # 绘制episode | plot episode
 ani = grid_world.animate_episode(env, episode, interval=200)
 file_to_save='images/grid_world_policy.gif' # None: do not save to file
-ani.save(file_to_save, writer='pillow', fps=20)
+ani.save(file_to_save, writer='pillow', fps=1)
 
 plt.show()
