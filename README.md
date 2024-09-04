@@ -32,8 +32,8 @@ Use State-Value-Agent (State Value Iteration Method)
 start: (0,0)
 target: (5,8)
 ```
-[state-values](examples/images/grid_world_state_values.png)
-[policy](examples/images/grid_world_policy.gif)
+![state-values](examples/images/grid_world_state_values.png)
+![policy](examples/images/grid_world_policy.gif)
 ```
 # examples/demo_state_table_agent.py
 
