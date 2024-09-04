@@ -1,6 +1,7 @@
 import numpy as np
 
 class GridWorld:
+
     def __init__(self, grid_size=4):
         self.grid_size = grid_size
         self.state = (0, 0)

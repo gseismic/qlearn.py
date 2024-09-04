@@ -1,13 +1,13 @@
 import config
 import numpy as np
-from qlearn.methods.iteration import (
+import torch
+import random
+from rlearn.methods.iteration import (
     value_iteration_learn, 
     policy_iteration_learn,
     mc_policy_iteration_learn
 )
-from qlearn.envs.grid_world import GridWorld
-import torch
-import random
+from rlearn.envs.grid_world import GridWorld
 random.seed(36)
 np.random.seed(36)
 torch.manual_seed(36)
