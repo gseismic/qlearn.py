@@ -52,7 +52,18 @@ class DQNAgent_C51(Agent):
                  learning_rate=0.001, gamma=0.99, batch_size=32, buffer_size=10000, 
                  device='cpu', *args, **kwargs):
         super(DQNAgent_C51, self).__init__(name=name, env=env, *args, **kwargs)
-        self.config = Config(DEFAULT_CONFIG)
+        self.config = Config() 
+        self.config.set('env.state_dim', state_dim, is_int=True, gt=0)
+        self.config.set('env.action_dim', action_dim, is_int=True, gt=0)
+        self.config.set('algorithm.num_atoms', num_atoms, is_int=True, gt=0)
+        self.config.set('algorithm.v_min', v_min, is_float=True)
+        self.config.set('algorithm.v_max', v_max, is_float=True, gt='algorithm.v_min')
+        self.config.set('algorithm.gamma', gamma, is_float=True, ge=0, le=1)
+        self.config.set('algorithm.batch_size', batch_size, is_int=True, gt=16)
+        self.config.set('device', device, is_str=True, in_values=['cpu', 'cuda'])
+        # self.config.set('algorithm.target_update_freq', target_update_freq, is_int=True, ge=0)
+        # self.config.set('algorithm.grad_clip', grad_clip, is_float=True, ge=0)
+        # self.config.set('algorithm.optimizer', optimizer)
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.num_atoms = num_atoms
@@ -60,22 +71,17 @@ class DQNAgent_C51(Agent):
         self.v_max = v_max
         self.delta_z = (v_max - v_min) / (num_atoms - 1)
 
+        self.learning_rate = learning_rate
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr=learning_rate)
         self.replay_buffer = ReplayBuffer(buffer_size)
         self.batch_size = batch_size
         self.gamma = gamma
-        self.device = device
+        self.device = torch.device(device) if isinstance(device, str) else device
         
         self.z = torch.linspace(v_min, v_max, num_atoms)        
         self.policy_net = C51Network(state_dim, action_dim, num_atoms, v_min, v_max).to(self.device)
         self.target_net = C51Network(state_dim, action_dim, num_atoms, v_min, v_max).to(self.device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
-    
-    def set_config(self, config):
-        self.config = config
-    
-    def set_policy_net(self, policy_net):
-        self.policy_net = policy_net
         
     def choose_action(self, state):
         with torch.no_grad():
@@ -92,7 +98,6 @@ class DQNAgent_C51(Agent):
         state_batch, action_batch, reward_batch, next_state_batch, done_batch = self.replay_buffer.sample(self.batch_size)
 
         # 将样本转换为张量 | Convert samples to tensors
-        # XXX: need .to(device) ?
         state_batch = torch.FloatTensor(state_batch).to(self.device)  # shape: (batch_size, state_dim)
         action_batch = torch.LongTensor(action_batch).to(self.device)  # shape: (batch_size,)
         reward_batch = torch.FloatTensor(reward_batch).to(self.device)  # shape: (batch_size,)
@@ -154,6 +159,13 @@ class DQNAgent_C51(Agent):
         self.optimizer.step()
 
     def learn(self, num_episodes, max_steps_per_episode=1000):
+        """
+        Note:
+            agent = DQNAgent_C51(...)
+            agent.learn(num_episodes=100, max_steps_per_episode=1000)
+            agent.learn(num_episodes=200, max_steps_per_episode=1000)
+        """
+        reward_list = []
         for episode in range(num_episodes):
             state, _ = self.env.reset()
             episode_reward = 0
@@ -175,7 +187,10 @@ class DQNAgent_C51(Agent):
             if episode % 10 == 0:
                 self.target_net.load_state_dict(self.policy_net.state_dict())
 
+            reward_list.append(episode_reward)  
             print(f"Episode {episode}, Total Reward: {episode_reward}")
+
+        return reward_list
 
     def save(self, path):
         torch.save(self.policy_net.state_dict(), path)

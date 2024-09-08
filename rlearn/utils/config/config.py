@@ -15,18 +15,18 @@ class Config(dict):
         - int
             - min <=> ge
             - max <=> le
-            - gt
-            - ge
-            - lt
-            - le
+            - gt: support str[field]
+            - ge: support str[field]
+            - lt: support str[field]
+            - le: support str[field]
             - in_values
         - float
             - min
             - max
-            - gt
-            - ge
-            - lt
-            - le
+            - gt: support str[field]
+            - ge: support str[field]
+            - lt: support str[field]
+            - le: support str[field]
             - in_values
         - str
             - min_length
@@ -189,7 +189,7 @@ class Config(dict):
         return repr(self)
     
     def __setattr__(self, key, value):
-        return self.set_nested(key, value, strict=False)
+        return self.set(key, value, strict=False)
     
     def __getitem__(self, key):
         return self.get_required(key)
@@ -207,9 +207,9 @@ class Config(dict):
             config['algorithm.optim.momentum'] = 0.9
             config['algorithm.optim.weight_decay'] = 0.0001
         """
-        return self.set_nested(key, value, strict=False)
+        return self.set(key, value, strict=False)
 
-    def set_nested(self, key, value, strict=False):
+    def set(self, key, value, strict=False, **kwargs):
         keys = key.split('.')
         parent = self
         for key in keys[:-1]:
@@ -222,9 +222,10 @@ class Config(dict):
                         self.logger.warning(msg)
             else:
                 super(Config, parent).__setitem__(key, Config())
-                parent = parent[key]
+            parent = parent[key]
                 
         value = self._make_config_value(value)
+        value = self.validate(keys[-1], value, **kwargs)
         if keys[-1] in parent:
             type_match = isinstance(parent[keys[-1]], type(value))
             type_match |= type_match or (type(parent[keys[-1]]) in (tuple, list) and type(value) in (tuple, list))
@@ -235,12 +236,12 @@ class Config(dict):
                     raise TypeError(msg)
                 else:
                     self.logger.warning(msg)
+            
             super(Config, parent).__setitem__(keys[-1], value)
         else:
             super(Config, parent).__setitem__(keys[-1], value)
  
-    @classmethod
-    def validate(cls, key, value, **kwargs):
+    def validate(self, key, value, **kwargs):
         # Check type validity | 检查类型有效性
         if kwargs.get('is_numeric') and not isinstance(value, (int, float)):
             raise TypeError(f"Key `{key}`: Value `{value}` should be `numeric`")
@@ -254,7 +255,7 @@ class Config(dict):
             raise TypeError(f"Key `{key}`: Value `{value}` should be `list`")
         if kwargs.get('is_tuple') and not isinstance(value, tuple):
             raise TypeError(f"Key `{key}`: Value `{value}` should be `tuple`")
-        if kwargs.get('is_dict') and not isinstance(value, dict):
+        if kwargs.get('is_dict') and not isinstance(value, (dict, Config)):
             raise TypeError(f"Key `{key}`: Value `{value}` should be `dict`")
         if kwargs.get('is_bool') and not isinstance(value, bool):
             raise TypeError(f"Key `{key}`: Value `{value}` should be `bool`")
@@ -289,14 +290,22 @@ class Config(dict):
         le = kwargs.get('le')
         
         # allow non-int and non-float types to compare | 允许非int和非float类型比较
-        if gt is not None and not (value > gt):
-            raise ValueError(f"Key `{key}`: Value `{value}` must be greater than `{gt}`")
-        if ge is not None and not (value >= ge):
-            raise ValueError(f"Key `{key}`: Value `{value}` must be greater than or equal to `{ge}`")
-        if lt is not None and not (value < lt):
-            raise ValueError(f"Key `{key}`: Value `{value}` must be less than `{lt}`")
-        if le is not None and not (value <= le):
-            raise ValueError(f"Key `{key}`: Value `{value}` must be less than or equal to `{le}`")
+        if gt is not None:
+            gt_value = gt if not isinstance(gt, str) else self[gt]
+            if not (value > gt_value):
+                raise ValueError(f"Key `{key}`: Value `{value}` must be greater than `{gt}`")
+        if ge is not None:
+            ge_value = ge if not isinstance(ge, str) else self[ge]
+            if not (value >= ge_value):
+                raise ValueError(f"Key `{key}`: Value `{value}` must be greater than or equal to `{ge}`")
+        if lt is not None:
+            lt_value = lt if not isinstance(lt, str) else self[lt]
+            if not (value < lt_value):
+                raise ValueError(f"Key `{key}`: Value `{value}` must be less than `{lt}`")
+        if le is not None:
+            le_value = le if not isinstance(le, str) else self[le]
+            if not (value <= le_value):
+                raise ValueError(f"Key `{key}`: Value `{value}` must be less than or equal to `{le}`")
             
         # Check string length | 检查字符串长度
         min_length = kwargs.get('min_length')
@@ -337,14 +346,14 @@ class Config(dict):
         key_type = kwargs.get('key_type')
         value_type = kwargs.get('value_type')
         if key_type:
-            if isinstance(value, dict):
+            if isinstance(value, (dict, Config)):
                 for key in value.keys():
                     if not isinstance(key, key_type):
                         raise TypeError(f"Key `{key}`: Dict key `{key}` should be of type `{key_type}`, but is `{type(key)}`")
             else:
                 raise TypeError(f'Key `{key}`: Only (dict) allowed to use key_type, but got `{type(value)}`')
         if value_type:
-            if isinstance(value, dict):
+            if isinstance(value, (dict, Config)):
                 for key in value.keys():
                     if not isinstance(value[key], value_type):
                         raise TypeError(f"Key `{key}`: Dict value `{value[key]}` should be of type `{value_type}`, but is `{type(value[key])}`")

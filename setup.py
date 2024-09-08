@@ -6,7 +6,7 @@ setup(
     version='0.0.2', 
     packages=find_packages(),
     description='Reinforcement Learning Algorithms',
-    install_requires = ['torch', 'numpy', 'loguru'],
+    install_requires = ['torch', 'numpy', 'loguru', 'pyyaml'],
     scripts=[],
     python_requires = '>=3',
     include_package_data=True,

@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from ...core.env import TableEnv, Env
 from ...spaces import Box, Discrete
-import copy
 
 
 class GridWorldEnv_V2(Env):

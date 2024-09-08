@@ -4,120 +4,139 @@ from rlearn.utils.config import Config
 import pytest
 
 def test_constructor():
-    A = Config()
-    A.lr = 0.01
-    assert A.lr == 0.01
-    A.method = Config()
-    A.method.optim = 1
-    assert A.method.optim == 1
-    A.method.optim = 2
-    assert A.method.optim == 2
+    cfg = Config()
+    cfg.lr = 0.01
+    assert cfg.lr == 0.01
+    cfg.method = Config()
+    cfg.method.optim = 1
+    assert cfg.method.optim == 1
+    cfg.method.optim = 2
+    assert cfg.method.optim == 2
     
-    A.clear()
-    assert A.to_dict() == {}
+    cfg.clear()
+    assert cfg.to_dict() == {}
     with pytest.raises(KeyError):
-        print(A.lr)
+        print(cfg.lr)
     with pytest.raises(KeyError):
-        print(A.method)
+        print(cfg.method)
     with pytest.raises(KeyError):
-        print(A.method.optim)
+        print(cfg.method.optim)
     
-    A = Config.from_dict({'lr': 0.01, 'method': {'optim': 1}})
-    assert A.lr == 0.01
-    assert A.method.optim == 1
-    A.method.optim = 2
-    assert A.method.optim == 2
-    # for k, v in A.items():
+    cfg = Config.from_dict({'lr': 0.01, 'method': {'optim': 1}})
+    assert cfg.lr == 0.01
+    assert cfg.method.optim == 1
+    cfg.method.optim = 2
+    assert cfg.method.optim == 2
+    # for k, v in cfg.items():
     #     print(k, v)
     
-    A = Config({'lr': 0.01, 'method': {'optim': 1}})
-    print(A)
-    assert A.get_optional('method.optim') == 1
+    cfg = Config({'lr': 0.01, 'method': {'optim': 1}})
+    print(cfg)
+    assert cfg.get_optional('method.optim') == 1
     
     
 def test_get_key():
-    A = Config.from_dict({'lr': 0.01, 'method': {'optim': 1}})
-    print(A)
-    lr = A.get('lr')
+    cfg = Config.from_dict({'lr': 0.01, 'method': {'optim': 1}})
+    print(cfg)
+    lr = cfg.get('lr')
     assert lr == 0.01
-    optim = A.get_required('method.optim')
+    optim = cfg.get_required('method.optim')
     assert optim == 1
-    ok = A.get('method.ok', 0)
+    ok = cfg.get('method.ok', 0)
     assert ok == 0
     with pytest.raises(KeyError):
-        A.get_required('method.not_exist')
+        cfg.get_required('method.not_exist')
     
-    not_exist = A.get_optional('method.not_exist', {'a': 1})
+    not_exist = cfg.get_optional('method.not_exist', {'a': 1})
     assert isinstance(not_exist, Config)
     assert not_exist.a == 1
-    print(A.to_json())
+    print(cfg.to_json())
     
-    A.to_json_file('test.json')
+    cfg.to_json_file('test.json')
     B = Config.from_json_file('test.json')
     assert B.lr == 0.01
     assert B.method.optim == 1
     print(B)
 
 def test_set_key():
-    A = Config()
-    A['optim.lr'] = 0.001
-    assert A['optim.lr'] == 0.001
-    assert A.optim.lr == 0.001
-    A['algorithm.optim.lr'] = 0.001
-    assert A.algorithm.optim.lr == 0.001
-    print(A.to_dict())
+    cfg = Config()
+    cfg['optim.lr'] = 0.001
+    assert cfg['optim.lr'] == 0.001
+    assert cfg.optim.lr == 0.001
+    cfg['algorithm.optim.lr'] = 0.001
+    assert cfg.algorithm.optim.lr == 0.001
+    print(cfg.to_dict())
     
-    A.clear()
+    cfg.clear()
     with pytest.raises(KeyError):
-        y = A.x1.xx1
+        y = cfg.x1.xx1
     with pytest.raises(KeyError):
-        A.x1.xx1 = 2
-
+        cfg.x1.xx1 = 2
+    
+    cfg.set('optim.lr', 0.001, is_float=True, ge=0)
+    assert cfg.optim.lr == 0.001
+    with pytest.raises(ValueError):
+        cfg.set('optim.lr', 0.001, is_float=True, ge=0.1)
+    
 def test_get_required():
-    A = Config.from_dict({'lr': 0.01, 'method': {'optim': 1}, 'ok': 1})
-    lr = A.get_required('lr', min=0.001, max=0.1)
+    cfg = Config.from_dict({'lr': 0.01, 'method': {'optim': 1}, 'ok': 1})
+    lr = cfg.get_required('lr', min=0.001, max=0.1)
     assert lr == 0.01
     with pytest.raises(ValueError):
-        A.get_required('lr', min=0.011, max=0.1)
+        cfg.get_required('lr', min=0.011, max=0.1)
     with pytest.raises(ValueError):
-        A.get_required('lr', min=0.001, max=0.009)
+        cfg.get_required('lr', min=0.001, max=0.009)
     
-    ok = A.get_required('ok', in_values=[1, 2, 3], is_int=True)
+    ok = cfg.get_required('ok', in_values=[1, 2, 3], is_int=True)
     assert ok == 1
     with pytest.raises(ValueError):
-        A.get_required('ok', in_values=[2, 3], is_int=True)
+        cfg.get_required('ok', in_values=[2, 3], is_int=True)
     with pytest.raises(TypeError): 
-        A.get_required('ok', is_float=True)
+        cfg.get_required('ok', is_float=True)
         
 def test_from_dict():
-    A = Config.from_dict({'lr': 0.01, 'method': {'optim': 1}})
-    assert A.lr == 0.01
-    assert A.method.optim == 1
-    A.ok = 1
-    assert A.ok == 1
-    A.set_nested('method.optim', 2)
-    print(A)
-    # print(A.lr)
-    # print(A.method)
-    # print(A.method.optim)
-    print(A.lr)
-    print(A.method.optim)
+    cfg = Config.from_dict({'lr': 0.01, 'method': {'optim': 1}})
+    assert cfg.lr == 0.01
+    assert cfg.method.optim == 1
+    cfg.ok = 1
+    assert cfg.ok == 1
+    cfg.set('method.optim', 2)
+    print(cfg)
+    # print(cfg.lr)
+    # print(cfg.method)
+    # print(cfg.method.optim)
+    print(cfg.lr)
+    print(cfg.method.optim)
 
 def test_to_yaml():
-    A = Config.from_dict({'lr': 0.01, 'method': {'optim': 1}})
-    A.to_yaml_file('test.yaml')
+    cfg = Config.from_dict({'lr': 0.01, 'method': {'optim': 1}})
+    cfg.to_yaml_file('test.yaml')
     B = Config.from_yaml_file('test.yaml')
     assert B.lr == 0.01
     assert B.method.optim == 1
     print(B)
 
 def test_to_json():
-    A = Config.from_dict({'lr': 0.01, 'method': {'optim': 1}})
-    A.to_json_file('test.json')
+    cfg = Config.from_dict({'lr': 0.01, 'method': {'optim': 1}})
+    cfg.to_json_file('test.json')
     B = Config.from_json_file('test.json')
     assert B.lr == 0.01
     assert B.method.optim == 1
     print(B)
+
+def test_check_value():
+    cfg = Config.from_dict({'lr': 0.01, 'method': {'optim': 1}})
+    cfg.set('min_lr', 0.01, ge=0.01)
+    with pytest.raises(ValueError):
+        cfg.set('max_lr', 0.001, gt='min_lr')
+        
+    # cfg.clear()
+    # cfg.set('max_lr', 0.06, gt='min_lr')
+    # cfg.set('v_min', 3.0, is_float=True, gt=0) # gt: greater than
+    # cfg.set('v_max', 5.0, is_float=True, gt='v_min') # gt: greater than
+    cfg.set('method.v_min', 3.0, is_float=True, gt=0) # gt: greater than
+    cfg.set('method.v_max', 5.0, is_float=True, gt='method.v_min') # gt: greater than
+    assert cfg.method.v_max == 5.0
     
 if __name__ == '__main__':
     if 0:
@@ -134,3 +153,5 @@ if __name__ == '__main__':
         test_to_yaml()
     if 0:
         test_to_json()
+    if 1:
+        test_check_value()

@@ -109,11 +109,12 @@ Config is a easy-to-use config loader with following features:
 - missing key warning | 缺失key提醒 
 - get value by nested key(s) .e.g. `method.optim` | 通过嵌套key(s)获取值，如`method.optim`
 - check type and value range | 检查类型和值范围
+- support check by field name | 支持通过字段名检查
 - load from dict/json/yaml file | 从dict/json/yaml文件中加载
 - save to json/yaml file | 保存为json/yaml文件
 
 Simple: 
-```
+```python
 from rlearn.utils import config
 
 cfg = config.from_dict({'method': {'optim': 'sgd', 'lr': 0.001}})
@@ -121,12 +122,15 @@ lr = cfg.get_required('method.lr', min=0.001, is_numeric=True)
 optim = cfg.get_optional('method.optim', is_str=True, in_values=['sgd', 'adam'])
 value = cfg.get_optional('method.value', default=0.001, min=0.001, is_float=True)
 
+cfg.set('method.v_min', 3.0, is_float=True, gt=0) # gt: greater than
+cfg.set('method.v_max', 5.0, is_float=True, gt='method.v_min') # gt: greater than
+
 print(f'lr: {lr}, optim: {optim}, value: {value}')
 # lr: 0.001, optim: sgd, value: 0.001
 cfg.to_json_file('demo_config/hello.json')
-
 cfg_loaded = config.from_json_file('demo_config/hello.json')
-print(cfg_loaded)
+# print(cfg_loaded.to_dict())
+
 ```
 More: [examples/demo_config_file.py](examples/demo_config_file.py)
 
