@@ -19,9 +19,9 @@ class Space(ABC):
 
 
 class Box(Space):
-    def __init__(self, low, high, shape=None):
-        self.low = np.array(low)
-        self.high = np.array(high)
+    def __init__(self, low, high, shape=None, dtype=np.float32):
+        self.low = np.array(low, dtype=dtype)
+        self.high = np.array(high, dtype=dtype)
         self.shape = shape if shape is not None else self.low.shape
 
     def sample(self):
@@ -168,3 +168,7 @@ class Graph(Space):
 
     def __repr__(self):
         return f"Graph(node_space={self.node_space}, edge_space={self.edge_space})"
+
+
+__all__ = ['Space', 'Dict', 'Discrete', 'Box', 'Graph', 'MultiDiscrete',
+           'Tuple', 'Text', 'Sequence']

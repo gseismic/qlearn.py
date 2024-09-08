@@ -17,7 +17,6 @@ Reinforcement Learning Library
 - [ ] Q-learning[off-policy]
 - [ ] DQN
 - [ ] dual-DQN
-- [ ] SAC
 - [ ] DDPG
 - [ ] HER
 - [ ] Monte (REINFORCE)
@@ -26,6 +25,13 @@ Reinforcement Learning Library
 - [ ] A2C
 - [ ] A3C
 - [ ] QAC
+- [ ] TD3
+- [ ] SAC
+- [ ] [REDQ](https://arxiv.org/abs/2101.05982)
+- [ ] [DroQ](https://github.com/TakuyaHiraoka/Dropout-Q-Functions-for-Doubly-Efficient-Reinforcement-Learning)
+
+## TODOs
+- [ ] QTableAgent.learn(): return rewards-list
 
 ## Examples 例子
 Grid-World Demo
@@ -95,8 +101,38 @@ Output:
  2024-09-04 16:26:06 | WARNING | Exit: Reach Max-Iter
 episode=[((0, 0), '^', -1), ((1, 0), '^', -1), ((2, 0), '^', -1), ((3, 0), '^', -1), ((4, 0), '^', -1), ((5, 0), '->', -1), ((5, 1), '->', -1), ((5, 2), '->', -1), ((5, 3), '->', -1), ((5, 4), '->', -1), ((5, 5), '->', -1), ((5, 6), '->', -1), ((5, 7), '->', 0)], done=True
 ```
+
+## Others
+### Config
+Config is a easy-to-use config loader with following features:
+- light-weight and easy-to-use | 轻量级且简单易用
+- missing key warning | 缺失key提醒 
+- get value by nested key(s) .e.g. `method.optim` | 通过嵌套key(s)获取值，如`method.optim`
+- check type and value range | 检查类型和值范围
+- load from dict/json/yaml file | 从dict/json/yaml文件中加载
+- save to json/yaml file | 保存为json/yaml文件
+
+Simple: 
+```
+from rlearn.utils import config
+
+cfg = config.from_dict({'method': {'optim': 'sgd', 'lr': 0.001}})
+lr = cfg.get_required('method.lr', min=0.001, is_numeric=True)
+optim = cfg.get_optional('method.optim', is_str=True, in_values=['sgd', 'adam'])
+value = cfg.get_optional('method.value', default=0.001, min=0.001, is_float=True)
+
+print(f'lr: {lr}, optim: {optim}, value: {value}')
+# lr: 0.001, optim: sgd, value: 0.001
+cfg.to_json_file('demo_config/hello.json')
+
+cfg_loaded = config.from_json_file('demo_config/hello.json')
+print(cfg_loaded)
+```
+More: [examples/demo_config_file.py](examples/demo_config_file.py)
+
 ## ChangeLog
 - [@2024-08-23] 项目创建project created
 - [@2024-08-28] add: state-value-iteration method
 - [@2024-09-04] tag: v0.0.2: re-design: Agent/Env, StateTableAgent, PolicyTableAgent
 - [@2024-09-05] tag: v0.0.3: QTableAgent, SarsaTableAgent
+- [@2024-09-08] add: rlearn.utils.config: easy-to-use config loader

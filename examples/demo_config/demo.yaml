@@ -1,0 +1,3 @@
+method:
+  lr: 0.001
+  optim: 1

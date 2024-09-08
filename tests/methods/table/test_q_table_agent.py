@@ -46,7 +46,7 @@ def test_qtable_agent_basic():
     print(f'done: {done}')
     
     ani = grid_world.animate_episode(env, episode, interval=200)
-    plt.show()
+    # plt.show()
     
     
 if __name__ == "__main__":
