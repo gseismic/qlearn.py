@@ -191,6 +191,9 @@ class DQNAgent_C51(Agent):
             print(f"Episode {episode}, Total Reward: {episode_reward}")
 
         return reward_list
+    
+    def predict(self, state, *args, **kwargs):
+        return super().predict(state, *args, **kwargs)
 
     def save(self, path):
         torch.save(self.policy_net.state_dict(), path)

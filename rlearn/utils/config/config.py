@@ -1,12 +1,8 @@
-from ...logger import user_logger
+import os
 import yaml
 import json
-import os
+from ...logger import user_logger
 
-"""
-FUTURE:
-    - schema e.g. cfg.make_schema({'method':{'lr':{'min':0.001, 'is_float':True}}})
-"""
     
 class Config(dict):
     """
@@ -44,7 +40,7 @@ class Config(dict):
             - is_bool
         - None
             - is_none
-    example:
+    examples:
         - config.get_optional('key', default=None, is_numeric=True, gt=0)
         - config.get_required('key', is_str=True, min_length=1)
         - config.get_required('key', is_list=True, min_length=1, element_type=int)
@@ -61,6 +57,9 @@ class Config(dict):
         - config.from_json_file('path/to/config.json')
         - config.to_yaml_file('path/to/config.yaml')
         - config.from_yaml_file('path/to/config.yaml')
+        - config = Config();  config['algorithm.batch_size'] = 32
+    FUTURE:
+        - add schema e.g. cfg.make_schema({'method':{'lr':{'min':0.001, 'is_float':True}}})
     """
     logger = user_logger
     
@@ -76,6 +75,16 @@ class Config(dict):
     @classmethod
     def from_dict(cls, config):
         return make_config(config)
+    
+    @classmethod
+    def from_json_file(cls, file_path, *args, **kwargs):
+        with open(file_path, 'r') as f:
+            return make_config(json.load(f, *args, **kwargs))
+    
+    @classmethod
+    def from_yaml_file(cls, file_path, *args, **kwargs):
+        with open(file_path, 'r') as f:
+            return make_config(yaml.load(f, Loader=yaml.SafeLoader, *args, **kwargs))
     
     def to_dict(self):
         config = {}
@@ -101,16 +110,6 @@ class Config(dict):
         with open(file_path, 'w') as f:
             yaml.dump(self.to_dict(), f, *args, **kwargs)
     
-    @classmethod
-    def from_json_file(cls, file_path, *args, **kwargs):
-        with open(file_path, 'r') as f:
-            return make_config(json.load(f, *args, **kwargs))
-    
-    @classmethod
-    def from_yaml_file(cls, file_path, *args, **kwargs):
-        with open(file_path, 'r') as f:
-            return make_config(yaml.load(f, Loader=yaml.SafeLoader, *args, **kwargs))
-    
     @staticmethod
     def _make_config_value(value):
         if isinstance(value, (dict, Config)):
@@ -129,9 +128,6 @@ class Config(dict):
                 return self.validate(key, value, **kwargs)
         return self.validate(key, value, **kwargs)
     
-    def get(self, key, default=None, **kwargs):
-        return self.get_optional(key, default, **kwargs)
-    
     def get_required(self, key, **kwargs):
         keys = key.split('.')
         value = self
@@ -141,7 +137,39 @@ class Config(dict):
             except KeyError:
                 raise KeyError(f"Key `{key}` not found")
         return self.validate(key, value, **kwargs)
-    
+        
+    def set(self, key, value, strict=False, **kwargs):
+        keys = key.split('.')
+        parent = self
+        for key in keys[:-1]:
+            if key in parent:
+                if not isinstance(parent[key], Config):
+                    msg = f"Key {key} is not a Config: {type(parent[key])}"
+                    if strict:
+                        raise ValueError(msg)
+                    else:
+                        self.logger.warning(msg)
+            else:
+                super(Config, parent).__setitem__(key, Config())
+            parent = parent[key]
+                
+        value = self._make_config_value(value)
+        value = self.validate(keys[-1], value, **kwargs)
+        if keys[-1] in parent:
+            type_match = isinstance(parent[keys[-1]], type(value))
+            type_match |= type_match or (type(parent[keys[-1]]) in (tuple, list) and type(value) in (tuple, list))
+            type_match |= type_match or (type(parent[keys[-1]]) in (dict, Config) and type(value) in (dict, Config))
+            if not type_match:
+                msg = f"Type mismatch for config item '{keys[-1]}'. Expected {type(parent[keys[-1]])}, but got {type(value)}"
+                if strict:
+                    raise TypeError(msg)
+                else:
+                    self.logger.warning(msg)
+            
+            super(Config, parent).__setitem__(keys[-1], value)
+        else:
+            super(Config, parent).__setitem__(keys[-1], value)
+ 
     def update(self, config, strict=True):
         """
         Update the configuration dictionary `recursively`. | 递归更新配置字典。
@@ -182,14 +210,8 @@ class Config(dict):
         recursive_update(self, config)
         return self
     
-    def __repr__(self) -> str:
-        return f'Config({super().__repr__()})'
-    
-    def __str__(self) -> str:
-        return repr(self)
-    
-    def __setattr__(self, key, value):
-        return self.set(key, value, strict=False)
+    def get(self, key, default=None, **kwargs):
+        return self.get_optional(key, default, **kwargs)
     
     def __getitem__(self, key):
         return self.get_required(key)
@@ -197,50 +219,12 @@ class Config(dict):
     def __getattr__(self, key):
         return self.get_required(key)
     
+    def __setattr__(self, key, value):
+        return self.set(key, value, strict=False)
+    
     def __setitem__(self, key, value):
-        """nested __setitem__
-        
-        e.g.
-            config = Config()
-            config['algorithm.batch_size'] = 32
-            config['algorithm.optim.lr'] = 0.001
-            config['algorithm.optim.momentum'] = 0.9
-            config['algorithm.optim.weight_decay'] = 0.0001
-        """
         return self.set(key, value, strict=False)
 
-    def set(self, key, value, strict=False, **kwargs):
-        keys = key.split('.')
-        parent = self
-        for key in keys[:-1]:
-            if key in parent:
-                if not isinstance(parent[key], Config):
-                    msg = f"Key {key} is not a Config: {type(parent[key])}"
-                    if strict:
-                        raise ValueError(msg)
-                    else:
-                        self.logger.warning(msg)
-            else:
-                super(Config, parent).__setitem__(key, Config())
-            parent = parent[key]
-                
-        value = self._make_config_value(value)
-        value = self.validate(keys[-1], value, **kwargs)
-        if keys[-1] in parent:
-            type_match = isinstance(parent[keys[-1]], type(value))
-            type_match |= type_match or (type(parent[keys[-1]]) in (tuple, list) and type(value) in (tuple, list))
-            type_match |= type_match or (type(parent[keys[-1]]) in (dict, Config) and type(value) in (dict, Config))
-            if not type_match:
-                msg = f"Type mismatch for config item '{keys[-1]}'. Expected {type(parent[keys[-1]])}, but got {type(value)}"
-                if strict:
-                    raise TypeError(msg)
-                else:
-                    self.logger.warning(msg)
-            
-            super(Config, parent).__setitem__(keys[-1], value)
-        else:
-            super(Config, parent).__setitem__(keys[-1], value)
- 
     def validate(self, key, value, **kwargs):
         # Check type validity | 检查类型有效性
         if kwargs.get('is_numeric') and not isinstance(value, (int, float)):
@@ -361,7 +345,13 @@ class Config(dict):
                 raise TypeError(f'Key `{key}`: Only (dict) allowed to use value_type, but got `{type(value)}`')
             
         return value
-        
+   
+    def __repr__(self) -> str:
+        return f'Config({super().__repr__()})'
+    
+    def __str__(self) -> str:
+        return repr(self)
+         
         
 from_dict = Config.from_dict
 from_json_file = Config.from_json_file
