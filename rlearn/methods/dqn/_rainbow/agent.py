@@ -1,4 +1,4 @@
-from ...core.agent import Agent
+from ....core.agent import Agent
 
 
 class DQNAgent_Rainbow(Agent):

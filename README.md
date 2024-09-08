@@ -1,40 +1,79 @@
 # rlearn.py
-Reinforcement Learning Library
-强化学习库[在开发中 Developing]
+Reinforcement Learning Library [developing...]
 
 ## Reference
 - 《Math Foundation of Reinforcement Learning》by [Shiyu Zhao]
 - 《深度强化学习》by Wang Shuseng 王树森
-- gym 
+- gym
 - stable-baselines3
 - more ..
 
 ## Methods
-- [x] StateTableAgent   | Value-Iteration Method
-- [x] PolicyTableAgent  | Policy-Iteration Method (with Truncate option)
-- [x] QTableAgent       | Tablar-Q-learning Method [on-policy]
-- [x] SarsaTableAgent   | SARSA Method [on-policy]
-- [ ] Q-learning[off-policy]
-- [ ] DQN
-- [ ] dual-DQN
-- [ ] DDPG
-- [ ] HER
-- [ ] Monte (REINFORCE)
-- [ ] TRPO
-- [ ] PPO
-- [ ] A2C
-- [ ] A3C
-- [ ] QAC
+- [x] StateTableAgent   | Value-Iteration Method [v0.0.1]
+- [x] PolicyTableAgent  | Policy-Iteration Method (with Truncate option) [v0.0.1]
+- [x] QTableAgent       | Tablar-Q-learning Method [on-policy] [v0.0.1]
+- [x] SarsaTableAgent   | SARSA Method [on-policy] [v0.0.1]
+- [ ] Q-learning        | Q-learning [off-policy]
+- [ ] DQN-main          | DQN-main [v0.0.1]
+- [ ] DQN-double        | DQN-double [v0.0.1]
+- [ ] DDPG              | DDPG [v0.0.1]
+- [ ] HER               | Hindsight Experience Replay
+- [ ] Monte (REINFORCE) | Monte-Carlo Method 
+- [ ] TRPO              | Trust Region Policy Optimization
+- [ ] PPO               | Proximal Policy Optimization
+- [ ] A2C               | Advantage Actor-Critic
+- [ ] A3C               | Asynchronous Advantage Actor-Critic
+- [ ] QAC               | Q Actor-Critic
 - [ ] TD3
 - [ ] SAC
 - [ ] [REDQ](https://arxiv.org/abs/2101.05982)
 - [ ] [DroQ](https://github.com/TakuyaHiraoka/Dropout-Q-Functions-for-Doubly-Efficient-Reinforcement-Learning)
 
 ## TODOs
-- [ ] QTableAgent.learn(): return rewards-list
+- [ ] unified interface for all methods | 为所有方法统一接口
+- [ ] DQN-main: interface not stable & not tested on GPU | DQN-main: 接口不稳定且未在GPU上测试
+- [ ] QTableAgent.learn(): return rewards-list | QTableAgent.learn(): 返回奖励列表
+- [ ] support cuda and test on GPU | 支持cuda并测试GPU
+- [ ] add more tests | 添加更多测试
+- [ ] remove unused code & optimize performance | 删除未使用的代码并优化性能
+- [ ] optimize code style & naming | 优化代码风格和命名
+- [ ] torch-style ReplayBuffer | torch风格的ReplayBuffer
+- [ ] better reward exit condition | 更好的奖励退出条件
+- [ ] add more examples | 添加更多例子
 
 ## Examples 例子
-Grid-World Demo
+### DQN-main Demo
+Use DQN-main
+```python
+# examples/demo_dqn_main_agent.py
+import gymnasium as gym
+from rlearn.utils.seed import seed_all
+from rlearn.methods.dqn.main import DQNAgent_Main
+
+seed = 36
+seed_all(seed)
+
+env = gym.make('CartPole-v1')
+config = {
+    'prioritized_replay': True,
+    'double_dqn': True,
+    'dueling_dqn': True,
+    'epsilon_start': 1.0,
+    'epsilon_end': 0.1,
+    'epsilon_decay': 0.995,
+    'gamma': 0.99,
+}
+agent = DQNAgent_Main(env, config=config)
+exit_code, info = agent.learn(num_episodes=1000, 
+                                         max_step_per_episode=500, 
+                                         max_total_steps=100000,
+                                         target_reward=300, 
+                                         seed=seed)
+print(f'{exit_code=}, {info=}')
+# 保存模型 | Save the model
+# agent.save("dqn_main_agent.pth")
+```
+### Grid-World Demo
 Use State-Value-Agent (State Value Iteration Method)
 ```
 start: (0,0)

@@ -3,6 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F 
 
 class C51Network(nn.Module):
+    """
+    C51 Network
+    """
     def __init__(self, state_dim, action_dim, num_atoms, v_min, v_max, hidden_layers=[128, 128], activation=nn.ReLU):
         super(C51Network, self).__init__()
         self.action_dim = action_dim

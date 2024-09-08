@@ -1,5 +1,5 @@
-from ...core.agent import Agent
-from ...utils.replay_buffer import ReplayBuffer
+from ....core.agent import Agent
+from ....utils.replay_buffer import ReplayBuffer
 
 
 class DQNAgent_OnPolicy_Naive(Agent):
@@ -55,8 +55,6 @@ class DQNAgent_OnPolicy_Naive(Agent):
                 self._update(state_batch, action_batch, reward_batch, next_state_batch, done_batch)
 
             state = next_state
-            
-            
         pass
 
     def predict(self, *args, **kwargs):

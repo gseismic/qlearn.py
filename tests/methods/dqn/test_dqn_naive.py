@@ -8,8 +8,20 @@ from rlearn.nets import MLP
 
 seed_all(36)
 
-def test_dqn_naive():    
+def test_dqn_naive():
     env = gym.make('CartPole-v1')
+    
+    agent = DQNAgent_Naive(name='test', env=env)
+    agent.set_config({
+        'algorithm': {
+            'gamma': 0.9,
+            'epsilon_start': 1.0,
+            'epsilon_end': 0.1,
+            'epsilon_decay': 0.995,
+            'max_steps_per_episode': 20000,
+            'check_exit_freq': 20,
+        }
+    })
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
     
