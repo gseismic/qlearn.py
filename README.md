@@ -1,18 +1,24 @@
 # rlearn.py
 Reinforcement Learning Library [developing...]
 
+## Installation
+```bash
+cd rlearn.py
+pip install -e . # developing, please install in editable mode
+```
+
 ## Methods
-| status | Agent | version | description | demo |   
+| state | Agent | version | description | demo |   
 |:---:|:---:|:---:|:---|:---|
 | ✅ | StateTableAgent   | v0.0.1 | Value-Iteration Method [v0.0.1] | [demo](examples/demo_state_table_agent.py)
 | ✅ | PolicyTableAgent  | v0.0.1 | Policy-Iteration Method (with Truncate option) [v0.0.1] | [demo](examples/demo_policy_table_agent.py)
 | ✅ | QTableAgent       | v0.0.1 | Tablar-Q-learning Method [on-policy] [v0.0.1] | [demo](examples/demo_q_table_agent.py)
 | ✅ | SarsaTableAgent   | v0.0.1 | SARSA Method [on-policy] [v0.0.1] | [demo](examples/demo_sarsa_table_agent.py)
-| ✅ | DQN-main          | v0.0.1 | DQN-main [v0.0.1]
-| ⬜ | DQN-double        | v0.0.1 | DQN-double [v0.0.0]
-| ⬜ | DDPG              | v0.0.0 | DDPG [v0.0.0]
-| ⬜ | HER               | v0.0.0 | Hindsight Experience Replay
-| ✅  | MCPG-naive       | v0.0.0 | Monte-Carlo Policy Gradient [v0.0.0] | [demo](examples/demo_mc_pg_agent.py)
+| ✅ | DQNAgent_Main     | v0.0.1 | DQN-main [v0.0.1] | [demo](examples/demo_dqn_main_agent.py) |
+| ⬜ | DQN-double        | v0.0.1 | DQN-double | 
+| ⬜ | DDPG              | v0.0.0 | DDPG | 
+| ⬜ | HER               | v0.0.0 | Hindsight Experience Replay | 
+| ✅ | MCPGAgent_Naive   | v0.0.1 | Monte-Carlo Policy Gradient | [demo](examples/demo_mc_pg_agent.py) |
 | ⬜ | TRPO              | v0.0.0 | Trust Region Policy Optimization
 | ⬜ | PPO               | v0.0.0 | Proximal Policy Optimization
 | ⬜ | A2C               | v0.0.0 | Advantage Actor-Critic
