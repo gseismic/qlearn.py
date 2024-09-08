@@ -1,33 +1,27 @@
 # rlearn.py
 Reinforcement Learning Library [developing...]
 
-## Reference
-- 《Math Foundation of Reinforcement Learning》by [Shiyu Zhao]
-- 《深度强化学习》by Wang Shuseng 王树森
-- gym
-- stable-baselines3
-- more ..
-
 ## Methods
-- [x] StateTableAgent   | Value-Iteration Method [v0.0.1]
-- [x] PolicyTableAgent  | Policy-Iteration Method (with Truncate option) [v0.0.1]
-- [x] QTableAgent       | Tablar-Q-learning Method [on-policy] [v0.0.1]
-- [x] SarsaTableAgent   | SARSA Method [on-policy] [v0.0.1]
-- [ ] Q-learning        | Q-learning [off-policy]
-- [ ] DQN-main          | DQN-main [v0.0.1]
-- [ ] DQN-double        | DQN-double [v0.0.1]
-- [ ] DDPG              | DDPG [v0.0.1]
-- [ ] HER               | Hindsight Experience Replay
-- [ ] Monte (REINFORCE) | Monte-Carlo Method 
-- [ ] TRPO              | Trust Region Policy Optimization
-- [ ] PPO               | Proximal Policy Optimization
-- [ ] A2C               | Advantage Actor-Critic
-- [ ] A3C               | Asynchronous Advantage Actor-Critic
-- [ ] QAC               | Q Actor-Critic
-- [ ] TD3
-- [ ] SAC
-- [ ] [REDQ](https://arxiv.org/abs/2101.05982)
-- [ ] [DroQ](https://github.com/TakuyaHiraoka/Dropout-Q-Functions-for-Doubly-Efficient-Reinforcement-Learning)
+| status | Agent | version | description | demo |   
+|:---:|:---:|:---:|:---|:---|
+| ✅ | StateTableAgent   | v0.0.1 | Value-Iteration Method [v0.0.1] | [demo](examples/demo_state_table_agent.py)
+| ✅ | PolicyTableAgent  | v0.0.1 | Policy-Iteration Method (with Truncate option) [v0.0.1] | [demo](examples/demo_policy_table_agent.py)
+| ✅ | QTableAgent       | v0.0.1 | Tablar-Q-learning Method [on-policy] [v0.0.1] | [demo](examples/demo_q_table_agent.py)
+| ✅ | SarsaTableAgent   | v0.0.1 | SARSA Method [on-policy] [v0.0.1] | [demo](examples/demo_sarsa_table_agent.py)
+| ✅ | DQN-main          | v0.0.1 | DQN-main [v0.0.1]
+| ⬜ | DQN-double        | v0.0.1 | DQN-double [v0.0.0]
+| ⬜ | DDPG              | v0.0.0 | DDPG [v0.0.0]
+| ⬜ | HER               | v0.0.0 | Hindsight Experience Replay
+| ✅  | MCPG-naive       | v0.0.0 | Monte-Carlo Policy Gradient [v0.0.0] | [demo](examples/demo_mc_pg_agent.py)
+| ⬜ | TRPO              | v0.0.0 | Trust Region Policy Optimization
+| ⬜ | PPO               | v0.0.0 | Proximal Policy Optimization
+| ⬜ | A2C               | v0.0.0 | Advantage Actor-Critic
+| ⬜ | A3C               | v0.0.0 | Asynchronous Advantage Actor-Critic
+| ⬜ | QAC               | v0.0.0 | Q Actor-Critic
+| ⬜ | TD3               | v0.0.0 | Twin Delayed DDPG
+| ⬜ | SAC               | v0.0.0 | Soft Actor-Critic
+| ⬜ | [REDQ](https://arxiv.org/abs/2101.05982) | v0.0.0 | Randomized Ensembled Double Q-learning
+| ⬜ | [DroQ](https://github.com/TakuyaHiraoka/Dropout-Q-Functions-for-Doubly-Efficient-Reinforcement-Learning) | v0.0.0 | Dropout Q-learning
 
 ## TODOs
 - [ ] unified interface for all methods | 为所有方法统一接口
@@ -179,3 +173,12 @@ More: [examples/demo_config_file.py](examples/demo_config_file.py)
 - [@2024-09-04] tag: v0.0.2: re-design: Agent/Env, StateTableAgent, PolicyTableAgent
 - [@2024-09-05] tag: v0.0.3: QTableAgent, SarsaTableAgent
 - [@2024-09-08] add: rlearn.utils.config: easy-to-use config loader
+- [@2024-09-08] add: DQN-main@v0.0.1: DQN-main double, dueling, prioritized replay
+- [@2024-09-09] add: MCPG-naive@v0.0.1: `reinforce` method
+
+## Reference
+- 《Math Foundation of Reinforcement Learning》by [Shiyu Zhao]
+- 《深度强化学习》by Wang Shuseng 王树森
+- gym
+- stable-baselines3
+- more ..
