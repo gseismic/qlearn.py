@@ -6,6 +6,18 @@ Reinforcement Learning Library [developing...]
 cd rlearn.py
 pip install -e . # developing, please install in editable mode
 ```
+## Symbols
+### Common Symbols
+| Symbol | Description | Symbol | Description |
+|:---:|:---|:---:|:---|
+| s | state | a | action |
+| π/pi | policy | ε/epsilon | exploration rate |
+| γ/gamma | gamma: discount factor | θ/theta | network parameter |
+| α/alpha | alpha: learning rate | β/beta | beta |
+| τ/tau | soft-update rate | μ/mu | mu |
+| σ/sigma | sigma | ω/omega | omega |
+| ∑ | sum | ∇/nabla | gradient |
+| ∂/partial | partial derivative | ∇/nabla | gradient |
 
 ## Methods
 | state | Agent | version | description | demo |   
@@ -28,6 +40,7 @@ pip install -e . # developing, please install in editable mode
 | ⬜ | SAC               | v0.0.0 | Soft Actor-Critic
 | ⬜ | [REDQ](https://arxiv.org/abs/2101.05982) | v0.0.0 | Randomized Ensembled Double Q-learning
 | ⬜ | [DroQ](https://github.com/TakuyaHiraoka/Dropout-Q-Functions-for-Doubly-Efficient-Reinforcement-Learning) | v0.0.0 | Dropout Q-learning
+| ⬜ | [PETS](https://arxiv.org/abs/2203.05442) | v0.0.0 | Parameter Efficient Twin Delayed DDPG
 
 ## TODOs
 - [ ] unified interface for all methods | 为所有方法统一接口

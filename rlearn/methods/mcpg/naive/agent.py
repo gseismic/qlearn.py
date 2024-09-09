@@ -2,13 +2,17 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import gym
 from .network import PolicyNetwork
 
 class MCPGAgent_Naive:
     DEFAULT_CONFIG = {
         'learning_rate': 0.01,
         'gamma': 0.99,
+        'standardize_returns': True,
+        'stardardize_epsilon': 1e-8,
+        # 'standardize_returns_batch_size': 50,
+        'learning_starts': 100,
+        'verbose_freq': 10,
     }
     def __init__(self, env, config):
         self.env = env
@@ -18,6 +22,7 @@ class MCPGAgent_Naive:
         self.policy = PolicyNetwork(self.input_dim, self.output_dim)
         self.optimizer = optim.Adam(self.policy.parameters(), lr=self.config['learning_rate'])
         self.gamma = self.config['gamma']
+        self.stardardize_epsilon = self.config['stardardize_epsilon']
     
     def select_action(self, state):
         # Select an action based on the policy / 根据策略选择动作
@@ -32,12 +37,24 @@ class MCPGAgent_Naive:
         R = 0
         for r in reversed(rewards):
             R = r + self.gamma * R
-            returns.insert(0, R)
-        returns = torch.tensor(returns)
-        returns = (returns - returns.mean()) / (returns.std() + 1e-8)
+            returns.append(R)
+        
+        # 重新反转回原来的顺序 | returns back to the original order
+        returns = torch.tensor(returns[::-1])
+        # 标准化回报 | normalize the returns
+        if self.config['standardize_returns']:
+            # option 1:
+            returns = (returns - returns.mean()) / (returns.std() + self.stardardize_epsilon)
+            # option 2: 只标准化部分 | only standardize part
+            # batch_size = self.config['standardize_returns_batch_size']
+            # for i in range(0, len(returns), batch_size):
+            #     batch = returns[i:i+batch_size]
+            #     mean = batch.mean()
+            #     std = batch.std() + self.stardardize_epsilon
+            #     returns[i:i+batch_size] = (batch - mean) / std
         return returns
     
-    def update_policy(self, states, actions, returns):
+    def update_policy(self, states, actions, returns: torch.Tensor):
         # Update the policy using the REINFORCE algorithm / 使用REINFORCE算法更新策略
         self.optimizer.zero_grad()
         # print(f'{len(states)=}, {states[0].shape=}')
@@ -69,8 +86,9 @@ class MCPGAgent_Naive:
                 
                 state = next_state
             
-            returns = self.calculate_returns(rewards)
-            self.update_policy(states, actions, returns)
+            if episode >= self.config['learning_starts']:
+                returns = self.calculate_returns(rewards)
+                self.update_policy(states, actions, returns)
             
-            if (episode + 1) % 10 == 0:
+            if (episode + 1) % self.config['verbose_freq'] == 0:
                 print(f"Episode {episode + 1}, Total Reward: {sum(rewards)}")

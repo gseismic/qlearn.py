@@ -20,8 +20,10 @@ def test_res_mlp_basic():
     print(model)
     
     # 测试前向传播
-    x = torch.randn(32, input_size)  # 批大小为32
+    batch_size = 32
+    x = torch.randn(batch_size, input_size)  # 批大小为32
     output = model(x)
+    assert output.shape == (batch_size, output_size)
     print(f"Output shape: {output.shape}")
 
 
