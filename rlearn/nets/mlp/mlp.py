@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from typing import List
+from ..utils.weight_init import init_linear_weight
 
 class MLP(nn.Module):
     """
@@ -12,7 +13,8 @@ class MLP(nn.Module):
                  hidden_sizes: List[int], 
                  hidden_activation: nn.Module = nn.ReLU(), 
                  output_activation: nn.Module = None, 
-                 use_batch_norm: bool = False):
+                 use_batch_norm: bool = False,
+                 init_method: str = 'xavier'):
         """
         Multi-Layer Perceptron Network
         Args:
@@ -30,6 +32,7 @@ class MLP(nn.Module):
         self.hidden_activation = hidden_activation
         self.output_activation = output_activation
         self.use_batch_norm = use_batch_norm
+        self.init_method = init_method
         
         layers = []
         prev_size = input_size
@@ -47,14 +50,7 @@ class MLP(nn.Module):
             layers.append(output_activation)
         
         self.network = nn.Sequential(*layers)
-        
-        self.apply(self._init_weights)
-    
-    def _init_weights(self, module: nn.Module):
-        if isinstance(module, nn.Linear):
-            nn.init.xavier_uniform_(module.weight)
-            if module.bias is not None:
-                nn.init.constant_(module.bias, 0)
+        self.apply(lambda module: init_linear_weight(module=module, init_method=self.init_method))
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.network(x)

@@ -4,6 +4,13 @@ import json
 from ...logger import user_logger
 
     
+"""
+TODO: 
+class Config:
+    def __init__(self, config):
+        pass
+"""
+
 class Config(dict):
     """
     A class for managing configuration settings. | 用于管理配置设置的类。
@@ -58,6 +65,7 @@ class Config(dict):
         - config.to_yaml_file('path/to/config.yaml')
         - config.from_yaml_file('path/to/config.yaml')
         - config = Config();  config['algorithm.batch_size'] = 32
+        - config.set_default_dict({'algorithm':{'batch_size':32}})
     FUTURE:
         - add schema e.g. cfg.make_schema({'method':{'lr':{'min':0.001, 'is_float':True}}})
     """
@@ -67,6 +75,7 @@ class Config(dict):
         super().__init__(*args, **kwargs)
         for key, value in self.items():
             self[key] = self._make_config_value(value)
+        super(Config, self).__setitem__('default_dict', {})
 
     @classmethod
     def set_logger(cls, logger):
@@ -115,14 +124,21 @@ class Config(dict):
         if isinstance(value, (dict, Config)):
             value = make_config(value)
         return value
-    
+        
+    def set_default_dict(self, default_dict):
+        # print(f'{default_dict=}')
+        super(Config, self).__setattr__('default_dict', default_dict) # make_config(default_dict)
+        return self
+        
     def get_optional(self, key, default=None, **kwargs):
         keys = key.split('.')
         value = self
         for k in keys:
             try:
-                value = super(Config, value).__getitem__(k)
+                value = super(Config, value).__getitem__(k) 
             except KeyError:
+                class_default = super(Config, self).__getattribute__('default_dict')[key]
+                default = default if default is not None else class_default
                 value = self._make_config_value(default)
                 self.logger.info(f"Key `{key}` not found, using default value `{value}`")
                 return self.validate(key, value, **kwargs)
@@ -220,6 +236,7 @@ class Config(dict):
         return self.get_required(key)
     
     def __setattr__(self, key, value):
+        print(f'{key=}, {value=}')
         return self.set(key, value, strict=False)
     
     def __setitem__(self, key, value):
@@ -272,6 +289,7 @@ class Config(dict):
         ge = kwargs.get('ge')
         lt = kwargs.get('lt')
         le = kwargs.get('le')
+        ne = kwargs.get('ne')
         
         # allow non-int and non-float types to compare | 允许非int和非float类型比较
         if gt is not None:
@@ -289,7 +307,11 @@ class Config(dict):
         if le is not None:
             le_value = le if not isinstance(le, str) else self[le]
             if not (value <= le_value):
-                raise ValueError(f"Key `{key}`: Value `{value}` must be less than or equal to `{le}`")
+                raise ValueError(f"Key `{key}`: Value `{value}` must be less than or equal to `{le}`")  
+        if ne is not None:
+            ne_value = ne if not isinstance(ne, str) else self[ne]
+            if not (value != ne_value):
+                raise ValueError(f"Key `{key}`: Value `{value}` must be not equal to `{ne}`")
             
         # Check string length | 检查字符串长度
         min_length = kwargs.get('min_length')

@@ -11,8 +11,11 @@ from ....logger import user_logger
 from .network import DQN, DuelingDQN
 
 class DQNAgent_Main:
-    """
+    """Online DQN Agent
     DQNAgent_Main is a class for training and evaluating a DQN agent.
+    
+    Notes:
+        - Discrete action space Only | 仅支持离散动作空间
     
     reference:
         - https://stable-baselines3.readthedocs.io/en/master/modules/dqn.html
@@ -29,60 +32,79 @@ class DQNAgent_Main:
         'epsilon_decay': 0.995,
         'target_update_freq': 10,
         'memory_size': 10000,
-        'mode': 'online',
-        'dueling_dqn': False,
-        'double_dqn': False,
-        'prioritized_replay': False,
+        # 'mode': 'online',
+        'dueling_dqn': True,
+        'double_dqn': True,
+        'prioritized_replay': True,
         'hidden_layers': [128, 128],
-        'device': 'cpu'
+        'device': 'cpu' # TODO: CUDA-default
     }
     
     def __init__(self, env, config=None):
+        """
+        Args:
+            - env: 环境 | Environment
+            - config: 配置 | Configuration
+        """
         self.env = env
         self.state_dim = np.prod(env.observation_space.shape)
         self.action_dim = env.action_space.n
         self.logger = user_logger
         self.set_config(config)
         if self.config['device'] == 'cuda':
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         else:
-            self.device = torch.device("cpu")
+            self.device = torch.device('cpu')
         self.epsilon = self.config['epsilon_start']
         self.update_steps = 0
-        
-    def set_config(self, config: dict):
-        # Update configuration with provided parameters | 使用提供的参数更新配置
-        self.config = self.DEFAULT_CONFIG.copy()
-        if config is not None:
-            self.config.update(config)
+        self.logger.info(f"DQNAgent_Main initialized with state_dim: {self.state_dim}, action_dim: {self.action_dim}")
+
+    def set_config(self, config: dict): 
+        """
+        Args:
+            - config: 配置 | Configuration
+        """
+        config = config or {}
+        self.config = { **self.DEFAULT_CONFIG, **config }
+        self.logger.info(f"Config updated: {self.config}")
         self._initialize_components()
         
     def _initialize_components(self):
-        # Initialize or reinitialize components based on current configuration | 根据当前配置初始化或重新初始化组件
+        """初始化组件 | Initialize or reinitialize components based on current configuration
+        """
         if self.config['dueling_dqn']:
             self.q_network = DuelingDQN(self.state_dim, self.action_dim)
             self.target_network = DuelingDQN(self.state_dim, self.action_dim)
+            self.logger.info(f"DuelingDQN initialized with state_dim: {self.state_dim}, action_dim: {self.action_dim}")
         else:
             self.q_network = DQN(self.state_dim, self.action_dim)
             self.target_network = DQN(self.state_dim, self.action_dim)
+            self.logger.info(f"DQN initialized with state_dim: {self.state_dim}, action_dim: {self.action_dim}")
         
         self.target_network.load_state_dict(self.q_network.state_dict())
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=self.config['lr'])
+        self.logger.info(f"Optimizer initialized with lr: {self.config['lr']}")
         
-        if self.config['prioritized_replay']:
+        if self.config['prioritized_replay']:   
             self.memory = PrioritizedReplayBuffer(self.config['memory_size'])
+            self.logger.info(f"PrioritizedReplayBuffer initialized with memory_size: {self.config['memory_size']}")
         else:
             self.memory = RandomReplayBuffer(self.config['memory_size'])
+            self.logger.info(f"RandomReplayBuffer initialized with memory_size: {self.config['memory_size']}")
         
     def select_action(self, state):
-        # Select action based on epsilon-greedy policy | 基于epsilon-greedy策略选择动作
+        """
+        基于epsilon-greedy策略选择动作 | Select action based on epsilon-greedy policy
+        Args:
+            - state: 状态 | State
+        """
         if random.random() < self.epsilon:
             return random.randrange(self.action_dim)
         
         with torch.no_grad():
             state = torch.FloatTensor(state).unsqueeze(0).to(self.device)  # shape: (1, state_dim)
             q_values = self.q_network(state)  # shape: (1, action_dim)
-            return q_values.argmax().item()
+            return q_values.argmax().item()  # 返回最大Q值对应的动作 | Return the action with the maximum Q value   
     
     def update(self):
         # Update the Q-network | 更新Q网络
@@ -113,7 +135,13 @@ class DQNAgent_Main:
         
         if self.config['double_dqn']:
             # 一个网络选择动作，另一个网络计算Q值 | One network chooses action, the other network calculates Q value
-            next_actions = self.q_network(next_state_batch).max(dim=1)[1].unsqueeze(1)  # shape: (batch_size, 1)
+            # self.q_network: (batch_size, action_dim)
+            # self.q_network(next_state_batch).max(dim=1): 在维度1上找到最大值，并返回最大值和最大值的索引
+            # self.q_network(next_state_batch).max(dim=1)[1]: 返回最大值的索引
+            # unsqueeze(1): 在维度1上增加一个维度，使其与action_batch的维度相同
+            # 选择下一个状态下的最大Q值 | Select the maximum Q value for the next state
+            # next_actions = self.q_network(next_state_batch).max(dim=1)[1].unsqueeze(1)  # shape: (batch_size, 1)
+            next_actions = self.q_network(next_state_batch).argmax(dim=1, keepdim=True)  # shape: (batch_size, 1)
             next_q_values = self.target_network(next_state_batch).gather(dim=1, index=next_actions)  # shape: (batch_size, 1)
         else:
             # 只有一个网络计算Q值 | Only one network calculates Q value
@@ -122,7 +150,8 @@ class DQNAgent_Main:
         # reward_batch: shape: (batch_size, 1)
         # done_batch: shape: (batch_size, 1)
         # next_q_values: shape: (batch_size, 1)
-        # print(f'{next_q_values.shape=}')
+        # 每个采样点一个值 | One value for each sample point
+        # mask: 1 - done_batch: shape: (batch_size, 1)
         expected_q_values = reward_batch + (1 - done_batch) * self.config['gamma'] * next_q_values  # shape: (batch_size, 1)
         
         # # 计算逐项损失 | Compute element-wise loss
@@ -181,8 +210,8 @@ class DQNAgent_Main:
                 episode_reward += reward
                 
                 self.memory.add(state, action, reward, next_state, done)
-                if self.config['mode'] == 'online':
-                    self.update()
+                # if self.config['mode'] == 'online':
+                self.update()
                 
                 state = next_state
                 episode_step += 1
@@ -198,9 +227,9 @@ class DQNAgent_Main:
                     should_exit = True
                     break
             
-            if self.config['mode'] == 'offline':
-                for _ in range(episode_step):
-                    self.update()
+            # if self.config['mode'] == 'offline':
+            #     for _ in range(episode_step):
+            #         self.update()
             
             self.logger.info(f"Episode {episode_idx + 1}, Reward: {episode_reward}, Epsilon: {self.epsilon:.2f}")
             reward_list.append(episode_reward)

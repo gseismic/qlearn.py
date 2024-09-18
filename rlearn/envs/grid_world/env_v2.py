@@ -6,6 +6,8 @@ from ...spaces import Box, Discrete
 
 
 class GridWorldEnv_V2(Env):
+    """Gym-like GridWorld Environment
+    """
 
     def __init__(self, 
                  shape=(5, 5), 
