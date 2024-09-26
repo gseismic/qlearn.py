@@ -135,7 +135,7 @@ class Config(dict):
         value = self
         for k in keys:
             try:
-                value = super(Config, value).__getitem__(k) 
+                value = super(Config, value).__getitem__(k)
             except KeyError:
                 class_default = super(Config, self).__getattribute__('default_dict')[key]
                 default = default if default is not None else class_default
@@ -244,6 +244,7 @@ class Config(dict):
 
     def validate(self, key, value, **kwargs):
         # Check type validity | 检查类型有效性
+        # 先整体赋值，然后check，可以比较相对大小
         if kwargs.get('is_numeric') and not isinstance(value, (int, float)):
             raise TypeError(f"Key `{key}`: Value `{value}` should be `numeric`")
         if kwargs.get('is_int') and not isinstance(value, int):
