@@ -40,7 +40,7 @@ class DQNAgent_Main(BaseDQNAgent):
         dict(field='hidden_layers', required=False, default=[128, 128], rules=dict(type='list', min_len=1)),
         dict(field='device', required=False, default='cpu', rules=dict(type='str', enum=['cpu', 'cuda'])),
         dict(field='verbose_freq', required=False, default=10, rules=dict(type='int', gt=0)),
-        dict(field='use_grad_clip', required=False, default=False, rules=dict(type='bool')),  # 新增：是否使用梯度裁剪
+        dict(field='use_grad_clip', required=False, default=True, rules=dict(type='bool')),  # 新增：是否使用梯度裁剪
         dict(field='max_grad_norm', required=False, default=1.0, rules=dict(type='float', gt=0)),  # 保留最大梯度范数参数
         dict(field='use_noisy_net', required=False, default=False, rules=dict(type='bool')),
         dict(field='noisy_net_type', required=False, default='dense', rules=dict(type='str', enum=['dense', 'factorized'])),
