@@ -40,6 +40,8 @@ class DQNAgent_Main(BaseDQNAgent):
         dict(field='hidden_layers', required=False, default=[128, 128], rules=dict(type='list', min_len=1)),
         dict(field='device', required=False, default='cpu', rules=dict(type='str', enum=['cpu', 'cuda'])),
         dict(field='verbose_freq', required=False, default=10, rules=dict(type='int', gt=0)),
+        dict(field='use_grad_clip', required=False, default=False, rules=dict(type='bool')),  # 新增：是否使用梯度裁剪
+        dict(field='max_grad_norm', required=False, default=1.0, rules=dict(type='float', gt=0)),  # 保留最大梯度范数参数
     ]
     
     def __init__(self, env, config=None, logger=None):
@@ -49,7 +51,12 @@ class DQNAgent_Main(BaseDQNAgent):
         self.epsilon = self.config['epsilon_start']
         self.update_steps = 0
         self.logger.info(f"DQNAgent_Main initialized with state_dim: {self.state_dim}, action_dim: {self.action_dim}")
-        
+        self.use_grad_clip = self.config.get('use_grad_clip', False)
+        self.max_grad_norm = self.config.get('max_grad_norm', 1.0)
+        self.logger.info(f"Gradient clipping: {'enabled' if self.use_grad_clip else 'disabled'}")
+        if self.use_grad_clip:
+            self.logger.info(f"Max gradient norm set to: {self.max_grad_norm}")
+
     def init_networks(self):
         if self.config['dueling_dqn']:
             self.q_network = DuelingDQN(self.state_dim, self.action_dim)
@@ -142,6 +149,10 @@ class DQNAgent_Main(BaseDQNAgent):
         
         self.optimizer.zero_grad()
         loss.backward()
+        
+        if self.use_grad_clip:
+            nn.utils.clip_grad_norm_(self.q_network.parameters(), self.max_grad_norm)
+        
         self.optimizer.step()
         
         if self.config['prioritized_replay']:

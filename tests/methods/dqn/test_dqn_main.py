@@ -19,9 +19,10 @@ def test_dqn_main():
         'epsilon_decay': 0.995,
         'gamma': 0.99,
         'verbose_freq': 1,
+        'use_grad_clip': True, # 梯度裁剪 | Gradient clipping
+        'max_grad_norm': 10, # 梯度裁剪的最大范数 | Maximum norm for gradient clipping  
     }
     agent = DQNAgent_Main(env, config=config)
-    # agent.set_config(config=config)
     # 退出条件： 参数控制学习的总数，最大步数，达到目标奖励
     # | Exit condition: parameters control the total number of learning, maximum steps, and target reward
     agent.learn(num_episodes=1000, 
