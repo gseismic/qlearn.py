@@ -3,10 +3,10 @@ from setuptools import setup, find_packages
 
 setup(
     name='rlearn', 
-    version='0.0.5', 
+    version='0.0.6', 
     packages=find_packages(),
     description='Reinforcement Learning Algorithms',
-    install_requires = ['torch', 'numpy', 'loguru', 'pyyaml'],
+    install_requires = ['torch', 'numpy', 'cfgdict', 'loguru', 'pyyaml'],
     scripts=[],
     python_requires = '>=3',
     include_package_data=True,
