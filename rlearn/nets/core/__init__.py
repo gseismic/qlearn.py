@@ -1,4 +1,4 @@
 from .linear import Linear
-from .noisy_linear import NoisyLinear
+from .noisy_linear import DenseNoisyLinear, FactorizedNoisyLinear
 
-__all__ = ['Linear', 'NoisyLinear']
+__all__ = ['Linear', 'DenseNoisyLinear', 'FactorizedNoisyLinear']
