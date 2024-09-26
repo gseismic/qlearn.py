@@ -15,18 +15,20 @@ class NoisyLinear(nn.Module):
     Reference:
         - [Noisy Networks for Exploration](https://arxiv.org/abs/1706.10295)
     """
-    # 噪声线性层 | Noisy linear layer
-    def __init__(self, in_features: int, 
+    def __init__(self, 
+                 in_features: int, 
                  out_features: int, 
-                 std_init: float = 0.5,
-                 init_method: str = 'uniform'):
+                 init_method: str = 'kaiming',
+                 std_init: float = 0.5):
         super(NoisyLinear, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.std_init = std_init
+        self.init_method = init_method
         
         self.weight_mu = nn.Parameter(torch.FloatTensor(out_features, in_features))
         self.weight_sigma = nn.Parameter(torch.FloatTensor(out_features, in_features))
+        # weight_epsilon: (out_features, in_features) 用于探索 | used for exploration
         self.register_buffer('weight_epsilon', torch.FloatTensor(out_features, in_features))
         
         self.bias_mu = nn.Parameter(torch.FloatTensor(out_features))
@@ -39,9 +41,20 @@ class NoisyLinear(nn.Module):
     def reset_parameters(self):
         # 重置所有参数 | Reset all parameters
         mu_range = 1 / np.sqrt(self.in_features)
-        self.weight_mu.data.uniform_(-mu_range, mu_range)
+        
+        if self.init_method == 'uniform':
+            self.weight_mu.data.uniform_(-mu_range, mu_range)
+            self.bias_mu.data.uniform_(-mu_range, mu_range)
+        elif self.init_method == 'xavier':
+            nn.init.xavier_uniform_(self.weight_mu)
+            nn.init.constant_(self.bias_mu, 0)
+        elif self.init_method == 'kaiming':
+            nn.init.kaiming_uniform_(self.weight_mu, nonlinearity='relu')
+            nn.init.constant_(self.bias_mu, 0)
+        else:
+            raise ValueError(f"未知的初始化方法 | Unknown initialization method: {self.init_method}")
+        
         self.weight_sigma.data.fill_(self.std_init / np.sqrt(self.in_features))
-        self.bias_mu.data.uniform_(-mu_range, mu_range)
         self.bias_sigma.data.fill_(self.std_init / np.sqrt(self.out_features))
     
     def reset_noise(self):
