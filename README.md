@@ -17,7 +17,7 @@ pip install -e . # developing, please install in editable mode
 | τ/tau | soft-update rate | μ/mu | mu |
 | σ/sigma | sigma | ω/omega | omega |
 | ∑ | sum | ∇/nabla | gradient |
-| ∂/partial | partial derivative | ∇/nabla | gradient |
+| ∂/partial | partial derivative |
 
 ## Methods
 | state | Agent | version | description | demo |   
