@@ -42,6 +42,10 @@ class DQNAgent_Main(BaseDQNAgent):
         dict(field='verbose_freq', required=False, default=10, rules=dict(type='int', gt=0)),
         dict(field='use_grad_clip', required=False, default=False, rules=dict(type='bool')),  # 新增：是否使用梯度裁剪
         dict(field='max_grad_norm', required=False, default=1.0, rules=dict(type='float', gt=0)),  # 保留最大梯度范数参数
+        dict(field='use_noisy_net', required=False, default=False, rules=dict(type='bool')),
+        dict(field='noisy_net_type', required=False, default='dense', rules=dict(type='str', enum=['dense', 'factorized'])),
+        dict(field='noisy_net_std_init', required=False, default=0.5, rules=dict(type='float', gt=0)),
+        dict(field='noisy_net_k', required=False, default=1, rules=dict(type='int', gt=0)),
     ]
     
     def __init__(self, env, config=None, logger=None):
@@ -56,15 +60,26 @@ class DQNAgent_Main(BaseDQNAgent):
         self.logger.info(f"Gradient clipping: {'enabled' if self.use_grad_clip else 'disabled'}")
         if self.use_grad_clip:
             self.logger.info(f"Max gradient norm set to: {self.max_grad_norm}")
+        self.use_noisy_net = self.config.get('use_noisy_net', False)
+        self.noisy_net_type = self.config.get('noisy_net_type', 'dense')
+        self.noisy_net_std_init = self.config.get('noisy_net_std_init', 0.5)
+        self.noisy_net_k = self.config.get('noisy_net_k', 1)
+        self.logger.info(f"Noisy Net: {'enabled' if self.use_noisy_net else 'disabled'}")
+        if self.use_noisy_net:
+            self.logger.info(f"Noisy Net Type: {self.noisy_net_type}")
+            self.logger.info(f"Noisy Net Std Init: {self.noisy_net_std_init}")
+            if self.noisy_net_type == 'factorized':
+                self.logger.info(f"Noisy Net K: {self.noisy_net_k}")
+        self.init_networks()
 
     def init_networks(self):
         if self.config['dueling_dqn']:
-            self.q_network = DuelingDQN(self.state_dim, self.action_dim)
-            self.target_network = DuelingDQN(self.state_dim, self.action_dim)
+            self.q_network = DuelingDQN(self.state_dim, self.action_dim, self.use_noisy_net, self.noisy_net_type, self.noisy_net_std_init, self.noisy_net_k)
+            self.target_network = DuelingDQN(self.state_dim, self.action_dim, self.use_noisy_net, self.noisy_net_type, self.noisy_net_std_init, self.noisy_net_k)
             self.logger.info(f"DuelingDQN initialized with state_dim: {self.state_dim}, action_dim: {self.action_dim}")
         else:
-            self.q_network = DQN(self.state_dim, self.action_dim)
-            self.target_network = DQN(self.state_dim, self.action_dim)
+            self.q_network = DQN(self.state_dim, self.action_dim, self.use_noisy_net, self.noisy_net_type, self.noisy_net_std_init, self.noisy_net_k)
+            self.target_network = DQN(self.state_dim, self.action_dim, self.use_noisy_net, self.noisy_net_type, self.noisy_net_std_init, self.noisy_net_k)
             self.logger.info(f"DQN initialized with state_dim: {self.state_dim}, action_dim: {self.action_dim}")
         
         self.target_network.load_state_dict(self.q_network.state_dict())
@@ -84,7 +99,7 @@ class DQNAgent_Main(BaseDQNAgent):
         Args:
             - state: 状态 | State
         """
-        if random.random() < self.epsilon:
+        if not self.use_noisy_net and random.random() < self.epsilon:
             return random.randrange(self.action_dim)
         
         with torch.no_grad():
@@ -163,7 +178,12 @@ class DQNAgent_Main(BaseDQNAgent):
         if self.update_steps % self.config['target_update_freq'] == 0:
             self.target_network.load_state_dict(self.q_network.state_dict())
         
-        self.epsilon = max(self.config['epsilon_end'], self.epsilon * self.config['epsilon_decay'])
+        if not self.use_noisy_net:
+            self.epsilon = max(self.config['epsilon_end'], self.epsilon * self.config['epsilon_decay'])
+        
+        if self.use_noisy_net:
+            self.q_network.reset_noise()
+            self.target_network.reset_noise()
     
     def learn(self, 
               num_episodes, 

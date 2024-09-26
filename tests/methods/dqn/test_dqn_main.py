@@ -1,13 +1,11 @@
 import gymnasium as gym
+import pytest
 from rlearn.utils.seed import seed_all
 from rlearn.methods.dqn.main import DQNAgent_Main
 
 seed_all(36)
 
-# 还可以为动作空间和观察空间设置随机种子 | Set the seed for action and observation spaces
-# env.action_space.seed(seed)
-# env.observation_space.seed(seed)
-def test_dqn_main():
+def test_dqn_main_default():
     env = gym.make('CartPole-v1')
     seed = 36
     config = {
@@ -19,22 +17,89 @@ def test_dqn_main():
         'epsilon_decay': 0.995,
         'gamma': 0.99,
         'verbose_freq': 1,
-        'use_grad_clip': True, # 梯度裁剪 | Gradient clipping
-        'max_grad_norm': 10, # 梯度裁剪的最大范数 | Maximum norm for gradient clipping  
+        'use_grad_clip': True,
+        'max_grad_norm': 10,
     }
     agent = DQNAgent_Main(env, config=config)
-    # 退出条件： 参数控制学习的总数，最大步数，达到目标奖励
-    # | Exit condition: parameters control the total number of learning, maximum steps, and target reward
-    agent.learn(num_episodes=1000, 
+    exit_info = agent.learn(num_episodes=100, 
                 max_step_per_episode=500, 
-                max_total_steps=100000, 
-                target_episode_reward=500, 
+                max_total_steps=10000, 
+                target_episode_reward=200, 
                 seed=seed)
-    # agent.learn(num_episodes=1000, max_step_per_episode=500, max_total_steps=100000, target_reward=300, seed=seed)
     
-    # 保存模型 | Save the model
-    # agent.save("dqn_main_agent.pth")
+    assert 'reward_list' in exit_info
+    assert len(exit_info['reward_list']) > 0
+    assert max(exit_info['reward_list']) >= 200
+
+def test_dqn_main_noisy_net_dense():
+    env = gym.make('CartPole-v1')
+    seed = 36
+    config = {
+        'prioritized_replay': True,
+        'double_dqn': True,
+        'dueling_dqn': True,
+        'gamma': 0.99,
+        'verbose_freq': 1,
+        'use_grad_clip': True,
+        'max_grad_norm': 10,
+        'use_noisy_net': True,
+        'noisy_net_type': 'dense',
+        'noisy_net_std_init': 0.5,
+    }
+    agent = DQNAgent_Main(env, config=config)
+    exit_info = agent.learn(num_episodes=100, 
+                max_step_per_episode=500, 
+                max_total_steps=10000, 
+                target_episode_reward=200, 
+                seed=seed)
+    
+    assert 'reward_list' in exit_info
+    assert len(exit_info['reward_list']) > 0
+    assert max(exit_info['reward_list']) >= 200
+
+def test_dqn_main_noisy_net_factorized():
+    env = gym.make('CartPole-v1')
+    seed = 36
+    config = {
+        'prioritized_replay': True,
+        'double_dqn': True,
+        'dueling_dqn': True,
+        'gamma': 0.99,
+        'verbose_freq': 1,
+        'use_grad_clip': True,
+        'max_grad_norm': 10,
+        'use_noisy_net': True,
+        'noisy_net_type': 'factorized',
+        'noisy_net_std_init': 0.5,
+        'noisy_net_k': 2,
+    }
+    agent = DQNAgent_Main(env, config=config)
+    exit_info = agent.learn(num_episodes=100, 
+                max_step_per_episode=500, 
+                max_total_steps=10000, 
+                target_episode_reward=200, 
+                seed=seed)
+    
+    assert 'reward_list' in exit_info
+    assert len(exit_info['reward_list']) > 0
+    assert max(exit_info['reward_list']) >= 200
+
+def test_dqn_main_invalid_config():
+    env = gym.make('CartPole-v1')
+    config = {
+        'use_noisy_net': True,
+        'noisy_net_type': 'invalid_type',
+    }
+    with pytest.raises(ValueError):
+        DQNAgent_Main(env, config=config)
 
 if __name__ == '__main__':
+    if 0:
+        test_dqn_main_noisy_net_dense()
+    if 0:
+        test_dqn_main_noisy_net_factorized()    
+    if 0:
+        test_dqn_main_invalid_config()
     if 1:
-        test_dqn_main()
+        test_dqn_main_default()
+    # pytest.main([__file__])

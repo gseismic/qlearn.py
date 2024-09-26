@@ -77,18 +77,31 @@ class DenseNoisyLinear(BaseNoisyLinear):
                  std_init: float = 0.5,
                  exploration_factor: float = 1.0):
         super().__init__(in_features, out_features, init_method, std_init, exploration_factor)
-        self.reset_noise()  # Call reset_noise() at the end of initialization
+        self.reset_noise()
 
     def reset_noise(self):
-        epsilon_in = self._scale_noise(self.in_features)
-        epsilon_out = self._scale_noise(self.out_features)
-        self.weight_epsilon.copy_(epsilon_out.ger(epsilon_in))
-        self.bias_epsilon.copy_(self._scale_noise(self.out_features))
+        # 直接使用标准正态分布的噪声，不进行特殊缩放
+        self.weight_epsilon.normal_()
+        self.bias_epsilon.normal_()
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        if self.training:
+            # 在每次前向传播时重置噪声
+            self.reset_noise()
+            weight = self.weight_mu + self.weight_sigma * self.weight_epsilon * self.exploration_factor
+            bias = self.bias_mu + self.bias_sigma * self.bias_epsilon * self.exploration_factor
+            return F.linear(input, weight, bias)
+        else:
+            return F.linear(input, self.weight_mu, self.bias_mu)
 
 class FactorizedNoisyLinear(BaseNoisyLinear):
     """
     FactorizedNoisyLinear 类实现了使用因子化高斯噪声的线性层。
     这个版本允许使用 k 个随机高斯噪声向量，增加了噪声的复杂性。
+    
+    _scale_noise方法生成的不是标准正态分布，而是一种经过变换的分布。这种分布可能在某些情况下更有利于探索。
+    References:
+         - https://github.com/Curt-Park/rainbow-is-all-you-need/blob/master/05.noisy_net.ipynb
     """
     def __init__(self, 
                  in_features: int, 
@@ -104,6 +117,7 @@ class FactorizedNoisyLinear(BaseNoisyLinear):
         self.reset_noise()  # 在初始化结束时调用 reset_noise
 
     def reset_noise(self):
+        # TODO: check 
         for i in range(self.k):
             self.epsilon_in[i] = self._scale_noise(self.in_features)
             self.epsilon_out[i] = self._scale_noise(self.out_features)

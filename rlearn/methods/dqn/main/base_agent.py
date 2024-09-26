@@ -19,8 +19,7 @@ class BaseDQNAgent:
         else:
             self.device = torch.device('cpu')
         self.logger.info(f'Config: {self.config}')
-
-        self.init_networks()        
+        # self.init_networks()
 
     def init_networks(self):
         raise NotImplementedError("This method should be overridden by subclasses")
