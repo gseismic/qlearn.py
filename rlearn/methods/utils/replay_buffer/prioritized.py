@@ -1,35 +1,5 @@
-import random
 import numpy as np
-from abc import ABC, abstractmethod
-from collections import namedtuple, deque
-
-Experience = namedtuple('Experience', ('state', 'action', 'reward', 'next_state', 'done'))
-
-class ReplayBuffer(ABC):
-    @abstractmethod
-    def add(self, *args):
-        pass
-
-    @abstractmethod
-    def sample(self, batch_size):
-        pass
-
-    @abstractmethod
-    def __len__(self):
-        pass
-
-class RandomReplayBuffer(ReplayBuffer):
-    def __init__(self, capacity):
-        self.buffer = deque(maxlen=capacity)
-
-    def add(self, *args):
-        self.buffer.append(Experience(*args))
-
-    def sample(self, batch_size):
-        return random.sample(self.buffer, batch_size)
-
-    def __len__(self):
-        return len(self.buffer)
+from .base import ReplayBuffer, Experience
 
 class PrioritizedReplayBuffer(ReplayBuffer):
 

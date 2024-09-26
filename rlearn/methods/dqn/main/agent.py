@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import random
 import numpy as np
-from .replay_buffer import (
+from ...utils.replay_buffer import (
     Experience,
     RandomReplayBuffer, PrioritizedReplayBuffer
 )

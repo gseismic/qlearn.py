@@ -40,11 +40,3 @@ class NStepQAgent(BaseAgent):
         td_error = G - self.Q_table[state][action]
         self.Q_table[state][action] += self.config['learning_rate'] * td_error
         return True
-
-    def save(self, file_path):
-        torch.save(self.Q_table, file_path)
-        self.logger.info(f"Q-table saved to {file_path}")
-
-    def load(self, file_path):
-        self.Q_table = torch.load(file_path)
-        self.logger.info(f"Q-table loaded from {file_path}")
