@@ -13,7 +13,7 @@ def test_nstep_q():
     config = {
         'n_step': 10,
         'use_strict_n_step': True,
-        'alpha': 0.1,
+        'learning_rate': 0.1,
         'gamma': 0.99,
         'epsilon': 0.1,
         'verbose_freq': 1
@@ -26,5 +26,4 @@ def test_nstep_q():
     # print(q_learning.Q_table)
 
 if __name__ == '__main__':
-    if 1:
-        test_nstep_q()
+    test_nstep_q()

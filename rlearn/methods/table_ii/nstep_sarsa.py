@@ -2,9 +2,9 @@ import torch
 import numpy as np
 from rlearn.methods.table_ii.base_agent import BaseAgent
 
-class NStepQAgent(BaseAgent):
+class NStepSARSAAgent(BaseAgent):
     """
-    N-Step Q-Learning Agent
+    N-Step SARSA Agent
     """
     schema = [
         dict(field='n_step', required=False, default=3, rules=dict(type='int', gt=0)),
@@ -34,9 +34,9 @@ class NStepQAgent(BaseAgent):
             G += (self.gamma ** i) * reward
         
         state, action, _ = trajectory[0]
-        next_state, _, _ = trajectory[-1]
+        next_state, next_action, _ = trajectory[-1]
 
-        G += (self.gamma ** current_n_step) * torch.max(self.Q_table[next_state]).item()
+        G += (self.gamma ** current_n_step) * self.Q_table[next_state][next_action].item()
         td_error = G - self.Q_table[state][action]
         self.Q_table[state][action] += self.config['learning_rate'] * td_error
         return True

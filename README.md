@@ -27,6 +27,7 @@ pip install -e . # developing, please install in editable mode
 | ✅ | QTableAgent       | v0.0.1 | Tablar-Q-learning Method [on-policy] [v0.0.1] | [demo](examples/demo_q_table_agent.py)
 | ✅ | SarsaTableAgent   | v0.0.1 | SARSA Method [on-policy] [v0.0.1] | [demo](examples/demo_sarsa_table_agent.py)
 | ✅ | DQNAgent_Main     | v0.0.1 | DQN-main [v0.0.1] | [demo](examples/demo_dqn_main_agent.py) |
+| ✅ | NStepQAgent       | v0.0.1 | N-Step Q-learning [v0.1.0] | [demo](tests/methods/table_ii/test_nstep_q.py) |
 | ⬜ | DQN-double        | v0.0.1 | DQN-double | 
 | ⬜ | DDPG              | v0.0.0 | DDPG | 
 | ⬜ | HER               | v0.0.0 | Hindsight Experience Replay | 
