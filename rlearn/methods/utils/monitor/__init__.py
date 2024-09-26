@@ -1,3 +1,4 @@
-from .simple_reward import SimpleRewardMonitor
+from .base import BaseMonitor
+from .reward import RewardMonitor
 
-__all__ = ['SimpleRewardMonitor']
+__all__ = ['BaseMonitor', 'RewardMonitor']

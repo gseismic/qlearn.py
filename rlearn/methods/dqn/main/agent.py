@@ -3,14 +3,16 @@ import torch.nn as nn
 import torch.optim as optim
 import random
 import numpy as np
-from ...utils.replay_buffer import (
+from rlearn.methods.utils.replay_buffer import (
     Experience,
     RandomReplayBuffer, PrioritizedReplayBuffer
 )
-from ....logger import user_logger
-from .network import DQN, DuelingDQN
+from rlearn.logger import user_logger
+from rlearn.methods.dqn.main.network import DQN, DuelingDQN
+from .base_agent import BaseDQNAgent    
+from rlearn.methods.utils.monitor import RewardMonitor
 
-class DQNAgent_Main:
+class DQNAgent_Main(BaseDQNAgent):
     """Online DQN Agent
     DQNAgent_Main is a class for training and evaluating a DQN agent.
     
@@ -23,55 +25,32 @@ class DQNAgent_Main:
         - https://github.com/kengz/SLM-Lab/blob/master/slm_lab/agent/algorithm/dqn.py
     """
     
-    DEFAULT_CONFIG = {
-        'lr': 1e-3,
-        'batch_size': 64,
-        'gamma': 0.99,
-        'epsilon_start': 1.0,
-        'epsilon_end': 0.01,
-        'epsilon_decay': 0.995,
-        'target_update_freq': 10,
-        'memory_size': 10000,
-        # 'mode': 'online',
-        'dueling_dqn': True,
-        'double_dqn': True,
-        'prioritized_replay': True,
-        'hidden_layers': [128, 128],
-        'device': 'cpu' # TODO: CUDA-default
-    }
+    schema = [
+        dict(field='lr', required=False, default=1e-3, rules=dict(type='float', gt=0)),
+        dict(field='batch_size', required=False, default=64, rules=dict(type='int', gt=0)),
+        dict(field='gamma', required=False, default=0.99, rules=dict(type='float', min=0, max=1)),
+        dict(field='epsilon_start', required=False, default=1.0, rules=dict(type='float', gt=0)),
+        dict(field='epsilon_end', required=False, default=0.01, rules=dict(type='float', gt=0)),
+        dict(field='epsilon_decay', required=False, default=0.995, rules=dict(type='float', gt=0, max=1)),
+        dict(field='target_update_freq', required=False, default=10, rules=dict(type='int', gt=0)),
+        dict(field='memory_size', required=False, default=10000, rules=dict(type='int', gt=0)),
+        dict(field='dueling_dqn', required=False, default=True, rules=dict(type='bool')),
+        dict(field='double_dqn', required=False, default=True, rules=dict(type='bool')),
+        dict(field='prioritized_replay', required=False, default=True, rules=dict(type='bool')),
+        dict(field='hidden_layers', required=False, default=[128, 128], rules=dict(type='list', min_len=1)),
+        dict(field='device', required=False, default='cpu', rules=dict(type='str', enum=['cpu', 'cuda'])),
+        dict(field='verbose_freq', required=False, default=10, rules=dict(type='int', gt=0)),
+    ]
     
-    def __init__(self, env, config=None):
-        """
-        Args:
-            - env: 环境 | Environment
-            - config: 配置 | Configuration
-        """
-        self.env = env
+    def __init__(self, env, config=None, logger=None):
         self.state_dim = np.prod(env.observation_space.shape)
         self.action_dim = env.action_space.n
-        self.logger = user_logger
-        self.set_config(config)
-        if self.config['device'] == 'cuda':
-            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        else:
-            self.device = torch.device('cpu')
+        super().__init__(env, config, logger)
         self.epsilon = self.config['epsilon_start']
         self.update_steps = 0
         self.logger.info(f"DQNAgent_Main initialized with state_dim: {self.state_dim}, action_dim: {self.action_dim}")
-
-    def set_config(self, config: dict): 
-        """
-        Args:
-            - config: 配置 | Configuration
-        """
-        config = config or {}
-        self.config = { **self.DEFAULT_CONFIG, **config }
-        self.logger.info(f"Config updated: {self.config}")
-        self._initialize_components()
         
-    def _initialize_components(self):
-        """初始化组件 | Initialize or reinitialize components based on current configuration
-        """
+    def init_networks(self):
         if self.config['dueling_dqn']:
             self.q_network = DuelingDQN(self.state_dim, self.action_dim)
             self.target_network = DuelingDQN(self.state_dim, self.action_dim)
@@ -175,7 +154,14 @@ class DQNAgent_Main:
         
         self.epsilon = max(self.config['epsilon_end'], self.epsilon * self.config['epsilon_decay'])
     
-    def learn(self, num_episodes, max_step_per_episode=None, max_total_steps=None, target_reward=None, seed=None):
+    def learn(self, 
+              num_episodes, 
+              max_step_per_episode=None, 
+              max_total_steps=None, 
+              target_episode_reward=None, 
+              target_window_avg_reward=None,
+              target_window_length=None,
+              seed=None):
         """
         Args: 
             - num_episodes: 训练的次数 | Number of episodes to train
@@ -191,61 +177,65 @@ class DQNAgent_Main:
         self.q_network.to(self.device)
         self.target_network.to(self.device) 
         
-        reward_list = []
-        should_exit = False
-        exit_code, exit_info = None, {}
-        # exit_monitor = RewardMonitor(target_reward)
-        all_episode_steps = 0
+        self.monitor = RewardMonitor(
+            max_step_per_episode=max_step_per_episode,
+            max_total_steps=max_total_steps,
+            target_episode_reward=target_episode_reward,
+            target_window_avg_reward=target_window_avg_reward,
+            target_window_length=target_window_length
+        )
+        
+        should_stop = False
         for episode_idx in range(num_episodes):
-            if should_exit:
-                break
             state, _ = self.env.reset(seed=seed)
-            episode_reward = 0
-            episode_step = 0
+            self.monitor.before_episode_start()
             
-            while True:
+            done = False
+            while not done:
                 action = self.select_action(state)
-                next_state, reward, terminated, truncated, _ = self.env.step(action)
-                done = terminated or truncated
-                episode_reward += reward
+                next_state, reward, terminated, truncated, info = self.env.step(action)
+                self.monitor.after_step_env(next_state, reward, terminated, truncated, info)
                 
+                done = terminated or truncated
                 self.memory.add(state, action, reward, next_state, done)
-                # if self.config['mode'] == 'online':
                 self.update()
                 
                 state = next_state
-                episode_step += 1
-                all_episode_steps += 1
+                exit_episode, exit_learning, (exit_learning_code, exit_learning_msg) = self.monitor.check_exit_conditions()
                 
-                if done or (max_step_per_episode is not None and episode_step >= max_step_per_episode):
+                if exit_learning:
+                    if exit_learning_code == 0:
+                        should_stop = True
+                        break
+                    elif exit_learning_code >= 1:
+                        should_stop = True
+                        break
+                    else:
+                        raise ValueError(f"Invalid exit learning code: {exit_learning_code}")
+                
+                if exit_episode:
                     break
                 
-                if max_total_steps is not None and self.update_steps >= max_total_steps:
-                    self.logger.info(f"Reached total steps of {max_total_steps}")
-                    exit_code = 0
-                    exit_info = {}
-                    should_exit = True
-                    break
-            
-            # if self.config['mode'] == 'offline':
-            #     for _ in range(episode_step):
-            #         self.update()
-            
-            self.logger.info(f"Episode {episode_idx + 1}, Reward: {episode_reward}, Epsilon: {self.epsilon:.2f}")
-            reward_list.append(episode_reward)
-            if target_reward is not None and episode_reward >= target_reward:
-                self.logger.info(f"Reached target reward of {target_reward}")
-                exit_code = 0
-                exit_info = {}
-                should_exit = True
-                continue
+            self.monitor.after_episode_end()            
+            if should_stop or (episode_idx + 1) % self.config['verbose_freq'] == 0:
+                self.logger.info(f"Episode {episode_idx+1}/{num_episodes}, Episode Reward: {self.monitor.episode_reward}")
                 
-        exit_info.update({
-            "reward_list": reward_list,
-            "update_steps": self.update_steps,
-            "all_episode_steps": all_episode_steps
-        })
-        return exit_code, exit_info
+            if should_stop:
+                if exit_learning_code == 0:
+                    self.logger.info(exit_learning_msg)
+                elif exit_learning_code >= 1:
+                    self.logger.warning(exit_learning_msg)
+                else:
+                    raise ValueError(f"Invalid exit learning code: {exit_learning_code}")
+                break
+            
+            if episode_idx == num_episodes - 1:
+                self.logger.warning(f"Reached the maximum number of episodes: {num_episodes}")
+        
+        exit_info = {
+            "reward_list": self.monitor.all_episode_rewards
+        }
+        return exit_info
     
     def save(self, path):
         # Save the model | 保存模型

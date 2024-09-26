@@ -21,7 +21,7 @@ def test_nstep_q():
     q_learning = NStepQAgent(env, config=config)
     seed = None
     num_episodes = 500
-    q_learning.learn(num_episodes=num_episodes, max_step_per_episode=500, max_total_steps=100000, target_reward=500, seed=seed)
+    q_learning.learn(num_episodes=num_episodes, max_step_per_episode=500, max_total_steps=100000, target_episode_reward=500, seed=seed)
     # print("Final Q-Table:")
     # print(q_learning.Q_table)
 

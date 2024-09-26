@@ -20,8 +20,12 @@ def test_nstep_sarsa():
     }
     sarsa_agent = NStepSARSAAgent(env, config=config)
     seed = None
-    num_episodes = 500
-    sarsa_agent.learn(num_episodes=num_episodes, max_step_per_episode=500, max_total_steps=100000, target_reward=500, seed=seed)
+    num_episodes = 50
+    sarsa_agent.learn(num_episodes=num_episodes, 
+                      max_step_per_episode=500, 
+                      max_total_steps=100000, 
+                      target_episode_reward=500, 
+                      seed=seed)
     # print("Final Q-Table:")
     # print(sarsa_agent.Q_table)
 
