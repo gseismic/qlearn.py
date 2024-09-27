@@ -2,6 +2,7 @@ from collections import deque
 from .base import BaseMonitor
 
 class RewardMonitor(BaseMonitor):
+    name = 'reward-monitor'
     def __init__(self, 
                  max_step_per_episode=None, 
                  max_total_steps=None, 
@@ -57,8 +58,8 @@ class RewardMonitor(BaseMonitor):
                 exit_learning_msg = f"Reached target window avg reward: {self.target_window_avg_reward}"
         return exit_episode, exit_learning, (exit_learning_code, exit_learning_msg)
 
-    def get_monitor_info(self):
-        return {
+    def get_exit_info(self):
+        info = {
             'total_steps': self.total_steps,
             'last_episode_steps': self.episode_steps,
             'last_episode_reward': self.episode_reward,
@@ -69,3 +70,4 @@ class RewardMonitor(BaseMonitor):
             'target_window_avg_reward': self.target_window_avg_reward,
             'target_window_length': self.target_window_length
         }
+        return info
