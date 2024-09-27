@@ -26,7 +26,7 @@ class DQNAgent_Main(BaseDQNAgent):
     """
     
     schema = [
-        dict(field='lr', required=False, default=1e-3, rules=dict(type='float', gt=0)),
+        dict(field='learning_rate', required=False, default=1e-3, rules=dict(type='float', gt=0)),
         dict(field='batch_size', required=False, default=64, rules=dict(type='int', gt=0)),
         dict(field='gamma', required=False, default=0.99, rules=dict(type='float', min=0, max=1)),
         dict(field='epsilon_start', required=False, default=1.0, rules=dict(type='float', gt=0)),
@@ -83,8 +83,8 @@ class DQNAgent_Main(BaseDQNAgent):
             self.logger.info(f"DQN initialized with state_dim: {self.state_dim}, action_dim: {self.action_dim}")
         
         self.target_network.load_state_dict(self.q_network.state_dict())
-        self.optimizer = optim.Adam(self.q_network.parameters(), lr=self.config['lr'])
-        self.logger.info(f"Optimizer initialized with lr: {self.config['lr']}")
+        self.optimizer = optim.Adam(self.q_network.parameters(), lr=self.config['learning_rate'])
+        self.logger.info(f"Optimizer initialized with learning_rate: {self.config['learning_rate']}")
         
         if self.config['prioritized_replay']:   
             self.memory = PrioritizedReplayBuffer(self.config['memory_size'])

@@ -80,10 +80,9 @@ class DenseNoisyLinear(BaseNoisyLinear):
         self.reset_noise()
 
     def reset_noise(self):
-        # 直接使用标准正态分布的噪声，不进行特殊缩放
-        # with torch.no_grad():   
-        self.weight_epsilon.normal_()
-        self.bias_epsilon.normal_()
+        # 使用缩放后的噪声
+        self.weight_epsilon.copy_(self._scale_noise(self.weight_epsilon.size()))
+        self.bias_epsilon.copy_(self._scale_noise(self.bias_epsilon.size()))
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         if self.training:
