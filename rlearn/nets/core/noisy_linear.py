@@ -81,15 +81,18 @@ class DenseNoisyLinear(BaseNoisyLinear):
 
     def reset_noise(self):
         # 直接使用标准正态分布的噪声，不进行特殊缩放
+        # with torch.no_grad():   
         self.weight_epsilon.normal_()
         self.bias_epsilon.normal_()
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         if self.training:
-            # 在每次前向传播时重置噪声
-            self.reset_noise()
-            weight = self.weight_mu + self.weight_sigma * self.weight_epsilon * self.exploration_factor
-            bias = self.bias_mu + self.bias_sigma * self.bias_epsilon * self.exploration_factor
+            # 需要在程序里reset_noise
+            # NOTE: 如果此处没有clone，会报错
+            # weight = self.weight_mu + self.weight_sigma * self.weight_epsilon * self.exploration_factor
+            # bias = self.bias_mu + self.bias_sigma * self.bias_epsilon * self.exploration_factor
+            weight = self.weight_mu + self.weight_sigma * self.weight_epsilon.clone() * self.exploration_factor
+            bias = self.bias_mu + self.bias_sigma * self.bias_epsilon.clone() * self.exploration_factor
             return F.linear(input, weight, bias)
         else:
             return F.linear(input, self.weight_mu, self.bias_mu)
@@ -131,10 +134,9 @@ class FactorizedNoisyLinear(BaseNoisyLinear):
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         if self.training:
-            # 每次前向传播时重新生成噪声
-            self.reset_noise()
-            weight = self.weight_mu + self.weight_sigma * self.weight_epsilon * self.exploration_factor
-            bias = self.bias_mu + self.bias_sigma * self.bias_epsilon * self.exploration_factor
+            # 移除这里的 reset_noise 调用
+            weight = self.weight_mu + self.weight_sigma * self.weight_epsilon.clone() * self.exploration_factor
+            bias = self.bias_mu + self.bias_sigma * self.bias_epsilon.clone() * self.exploration_factor
             return F.linear(input, weight, bias)
         else:
             return F.linear(input, self.weight_mu, self.bias_mu)

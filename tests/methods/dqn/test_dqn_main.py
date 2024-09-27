@@ -1,7 +1,10 @@
+import torch
+torch.autograd.set_detect_anomaly(True)
 import gymnasium as gym
 import pytest
 from rlearn.utils.seed import seed_all
 from rlearn.methods.dqn.main import DQNAgent_Main
+
 
 seed_all(36)
 
@@ -94,12 +97,13 @@ def test_dqn_main_invalid_config():
         DQNAgent_Main(env, config=config)
 
 if __name__ == '__main__':
+    if 1:
+        # OK
+        test_dqn_main_default()
     if 0:
         test_dqn_main_noisy_net_dense()
     if 0:
         test_dqn_main_noisy_net_factorized()    
     if 0:
         test_dqn_main_invalid_config()
-    if 1:
-        test_dqn_main_default()
     # pytest.main([__file__])

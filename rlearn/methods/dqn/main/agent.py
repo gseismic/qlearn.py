@@ -9,7 +9,7 @@ from rlearn.methods.utils.replay_buffer import (
 )
 from rlearn.logger import user_logger
 from rlearn.methods.dqn.main.network import DQN, DuelingDQN
-from .base_agent import BaseDQNAgent    
+from .base_agent import BaseDQNAgent
 from rlearn.methods.utils.monitor import RewardMonitor
 
 class DQNAgent_Main(BaseDQNAgent):
@@ -38,12 +38,12 @@ class DQNAgent_Main(BaseDQNAgent):
         dict(field='double_dqn', required=False, default=True, rules=dict(type='bool')),
         dict(field='prioritized_replay', required=False, default=True, rules=dict(type='bool')),
         dict(field='hidden_layers', required=False, default=[128, 128], rules=dict(type='list', min_len=1)),
-        dict(field='device', required=False, default='cpu', rules=dict(type='str', enum=['cpu', 'cuda'])),
+        dict(field='device', required=False, default='cpu', rules=dict(type='str', choices=['cpu', 'cuda'])),
         dict(field='verbose_freq', required=False, default=10, rules=dict(type='int', gt=0)),
         dict(field='use_grad_clip', required=False, default=True, rules=dict(type='bool')),  # 新增：是否使用梯度裁剪
         dict(field='max_grad_norm', required=False, default=1.0, rules=dict(type='float', gt=0)),  # 保留最大梯度范数参数
         dict(field='use_noisy_net', required=False, default=False, rules=dict(type='bool')),
-        dict(field='noisy_net_type', required=False, default='dense', rules=dict(type='str', enum=['dense', 'factorized'])),
+        dict(field='noisy_net_type', required=False, default='dense', rules=dict(type='str', choices=['dense', 'factorized'])),
         dict(field='noisy_net_std_init', required=False, default=0.5, rules=dict(type='float', gt=0)),
         dict(field='noisy_net_k', required=False, default=1, rules=dict(type='int', gt=0)),
     ]
@@ -108,7 +108,6 @@ class DQNAgent_Main(BaseDQNAgent):
             return q_values.argmax().item()  # 返回最大Q值对应的动作 | Return the action with the maximum Q value   
     
     def update(self):
-        # Update the Q-network | 更新Q网络
         if len(self.memory) < self.config['batch_size']:
             return
         
@@ -132,22 +131,27 @@ class DQNAgent_Main(BaseDQNAgent):
         # state_batch: shape: (batch_size, state_dim)
         # action_batch: shape: (batch_size, 1)
         # q_values: shape: (batch_size, 1)
+        # if self.use_noisy_net:  
+        #     self.q_network.reset_noise()
+        #     self.target_network.reset_noise()
+        
         q_values = self.q_network(state_batch).gather(dim=1, index=action_batch)  # shape: (batch_size, 1)
         
-        if self.config['double_dqn']:
-            # 一个网络选择动作，另一个网络计算Q值 | One network chooses action, the other network calculates Q value
-            # self.q_network: (batch_size, action_dim)
-            # self.q_network(next_state_batch).max(dim=1): 在维度1上找到最大值，并返回最大值和最大值的索引
-            # self.q_network(next_state_batch).max(dim=1)[1]: 返回最大值的索引
-            # unsqueeze(1): 在维度1上增加一个维度，使其与action_batch的维度相同
-            # 选择下一个状态下的最大Q值 | Select the maximum Q value for the next state
-            # next_actions = self.q_network(next_state_batch).max(dim=1)[1].unsqueeze(1)  # shape: (batch_size, 1)
-            next_actions = self.q_network(next_state_batch).argmax(dim=1, keepdim=True)  # shape: (batch_size, 1)
-            next_q_values = self.target_network(next_state_batch).gather(dim=1, index=next_actions)  # shape: (batch_size, 1)
-        else:
-            # 只有一个网络计算Q值 | Only one network calculates Q value
-            next_q_values = self.target_network(next_state_batch).max(dim=1)[0].unsqueeze(1)  # shape: (batch_size, 1)
-        
+        with torch.no_grad():
+            if self.config['double_dqn']:
+                # 一个网络选择动作，另一个网络计算Q值 | One network chooses action, the other network calculates Q value
+                # self.q_network: (batch_size, action_dim)
+                # self.q_network(next_state_batch).max(dim=1): 在维度1上找到最大值，并返回最大值和最大值的索引
+                # self.q_network(next_state_batch).max(dim=1)[1]: 返回最大值的索引
+                # unsqueeze(1): 在维度1上增加一个维度，使其与action_batch的维度相同
+                # 选择下一个状态下的最大Q值 | Select the maximum Q value for the next state
+                # next_actions = self.q_network(next_state_batch).max(dim=1)[1].unsqueeze(1)  # shape: (batch_size, 1)
+                next_actions = self.q_network(next_state_batch).argmax(dim=1, keepdim=True)  # shape: (batch_size, 1)
+                next_q_values = self.target_network(next_state_batch).gather(dim=1, index=next_actions)  # shape: (batch_size, 1)
+            else:
+                # 只有一个网络计算Q值 | Only one network calculates Q value
+                next_q_values = self.target_network(next_state_batch).max(dim=1)[0].unsqueeze(1)  # shape: (batch_size, 1)
+            
         # reward_batch: shape: (batch_size, 1)
         # done_batch: shape: (batch_size, 1)
         # next_q_values: shape: (batch_size, 1)
@@ -171,7 +175,8 @@ class DQNAgent_Main(BaseDQNAgent):
         self.optimizer.step()
         
         if self.config['prioritized_replay']:
-            td_errors = (q_values - expected_q_values).abs().detach().cpu().numpy()
+            # td_errors = (q_values - expected_q_values).abs().detach().cpu().numpy()
+            td_errors = (q_values.detach() - expected_q_values).abs().cpu().numpy()
             self.memory.update_priorities(indices, td_errors)
         
         self.update_steps += 1
