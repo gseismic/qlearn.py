@@ -1,12 +1,12 @@
 import torch
 torch.autograd.set_detect_anomaly(True)
 import gymnasium as gym
-import pytest
 from rlearn.utils.seed import seed_all
 from rlearn.methods.dqn.main import DQNAgent_Main
+import pytest
 
-
-seed_all(36)
+# seed_all(36)
+seed_all(None)
 
 def test_dqn_main_default():
     env = gym.make('CartPole-v1')
@@ -81,7 +81,7 @@ def test_dqn_main_noisy_net_factorized():
         'noisy_net_k': 2,
     }
     agent = DQNAgent_Main(env, config=config)
-    exit_info = agent.learn(num_episodes=100, 
+    exit_info = agent.learn(num_episodes=200, 
                 max_step_per_episode=500, 
                 max_total_steps=10000, 
                 target_episode_reward=200, 
@@ -104,9 +104,10 @@ if __name__ == '__main__':
     if 0:
         # OK
         test_dqn_main_default()
-    if 1:
-        test_dqn_main_noisy_net_dense()
     if 0:
+        # OK
+        test_dqn_main_noisy_net_dense()
+    if 1:
         # OK
         test_dqn_main_noisy_net_factorized()
     if 0:

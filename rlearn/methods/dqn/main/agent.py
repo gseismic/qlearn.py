@@ -8,7 +8,7 @@ from rlearn.methods.utils.replay_buffer import (
     RandomReplayBuffer, PrioritizedReplayBuffer
 )
 from rlearn.logger import user_logger
-from rlearn.methods.dqn.main.network import DQN, DuelingDQN
+from rlearn.methods.dqn.main.network import DQN, DuelingDQN, C51Network
 from .base_agent import BaseDQNAgent
 from rlearn.methods.utils.monitor import RewardMonitor
 from rlearn.nets.core.noisy_linear import DenseNoisyLinear, FactorizedNoisyLinear
@@ -49,6 +49,10 @@ class DQNAgent_Main(BaseDQNAgent):
         dict(field='noisy_net_k', required=False, default=1, rules=dict(type='int', gt=0)),
         dict(field='noise_decay', required=False, default=0.99, rules=dict(type='float', gt=0, max=1)),
         dict(field='min_exploration_factor', required=False, default=0.1, rules=dict(type='float', gt=0)),
+        dict(field='algorithm', required=False, default='dqn', rules=dict(type='str', choices=['dqn', 'c51'])),  # 新增：算法选择
+        dict(field='num_atoms', required=False, default=51, rules=dict(type='int', gt=0)),  # 新增：C51 分布的原子数
+        dict(field='v_min', required=False, default=-10.0, rules=dict(type='float')),  # 新增：C51 分布的最小值
+        dict(field='v_max', required=False, default=10.0, rules=dict(type='float')),  # 新增: C51 分布的最大值
     ]
     
     def __init__(self, env, config=None, logger=None):
@@ -73,14 +77,42 @@ class DQNAgent_Main(BaseDQNAgent):
             self.logger.info(f"Noisy Net Std Init: {self.noisy_net_std_init}")
             if self.noisy_net_type == 'factorized':
                 self.logger.info(f"Noisy Net K: {self.noisy_net_k}")
-            self.noise_decay = self.config.get('noise_decay', 0.99)
-            self.min_exploration_factor = self.config.get('min_exploration_factor', 0.1)
-            self.logger.info(f"Noise Decay: {self.noise_decay}")
-            self.logger.info(f"Min Exploration Factor: {self.min_exploration_factor}")
+        self.noise_decay = self.config.get('noise_decay', 0.99)
+        self.min_exploration_factor = self.config.get('min_exploration_factor', 0.1)
+        self.logger.info(f"Noise Decay: {self.noise_decay}")
+        self.logger.info(f"Min Exploration Factor: {self.min_exploration_factor}")
         self.init_networks()
 
     def init_networks(self):
-        if self.config['dueling_dqn']:
+        if self.config['algorithm'] == 'c51':
+            self.q_network = C51Network(
+                self.state_dim, 
+                self.action_dim, 
+                self.config['num_atoms'], 
+                self.config['v_min'], 
+                self.config['v_max'],
+                self.use_noisy_net, 
+                self.noisy_net_type, 
+                self.noisy_net_std_init, 
+                self.noisy_net_k,
+                min_exploration_factor=self.min_exploration_factor,
+                noise_decay=self.noise_decay
+            )
+            self.target_network = C51Network(
+                self.state_dim, 
+                self.action_dim, 
+                self.config['num_atoms'], 
+                self.config['v_min'], 
+                self.config['v_max'],
+                self.use_noisy_net, 
+                self.noisy_net_type, 
+                self.noisy_net_std_init, 
+                self.noisy_net_k,
+                min_exploration_factor=self.min_exploration_factor,
+                noise_decay=self.noise_decay
+            )
+            self.logger.info(f"C51 network initialized with state_dim: {self.state_dim}, action_dim: {self.action_dim}")
+        elif self.config['dueling_dqn']:
             self.q_network = DuelingDQN(
                 self.state_dim, 
                 self.action_dim, 
@@ -146,9 +178,14 @@ class DQNAgent_Main(BaseDQNAgent):
             return random.randrange(self.action_dim)
         
         with torch.no_grad():
-            state = torch.FloatTensor(state).unsqueeze(0).to(self.device)  # shape: (1, state_dim)
-            q_values = self.q_network(state)  # shape: (1, action_dim)
-            return q_values.argmax().item()  # 返回最大Q值对应的动作 | Return the action with the maximum Q value   
+            state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+            if self.config['algorithm'] == 'c51':
+                distribution = self.q_network(state)
+                expected_values = (distribution * self.q_network.support).sum(2)
+                return expected_values.argmax().item()
+            else:
+                q_values = self.q_network(state)
+                return q_values.argmax().item()
     
     def update(self):
         if len(self.memory) < self.config['batch_size']:
@@ -163,47 +200,56 @@ class DQNAgent_Main(BaseDQNAgent):
         
         batch = Experience(*zip(*experiences)) # shape: (batch_size, )
         
-        # state_batch = torch.FloatTensor(batch.state).to(self.device)  # shape: (batch_size, state_dim)
         state_batch = torch.FloatTensor(np.array(batch.state)).to(self.device)  # shape: (batch_size, state_dim)
         action_batch = torch.LongTensor(batch.action).unsqueeze(1).to(self.device)  # shape: (batch_size, 1)
         reward_batch = torch.FloatTensor(batch.reward).unsqueeze(1).to(self.device)  # shape: (batch_size, 1)
-        # next_state_batch = torch.FloatTensor(batch.next_state).to(self.device)  # shape: (batch_size, state_dim)
         next_state_batch = torch.FloatTensor(np.array(batch.next_state)).to(self.device)  # shape: (batch_size, state_dim)
         done_batch = torch.FloatTensor(batch.done).unsqueeze(1).to(self.device)  # shape: (batch_size, 1)
         
-        # state_batch: shape: (batch_size, state_dim)
-        # action_batch: shape: (batch_size, 1)
-        # q_values: shape: (batch_size, 1)
-        # if self.use_noisy_net:  
-        #     self.q_network.reset_noise()
-        #     self.target_network.reset_noise()
-        
-        q_values = self.q_network(state_batch).gather(dim=1, index=action_batch)  # shape: (batch_size, 1)
-        
-        with torch.no_grad():
-            if self.config['double_dqn']:
-                # 一个网络选择动作，另一个网络计算Q值 | One network chooses action, the other network calculates Q value
-                # self.q_network: (batch_size, action_dim)
-                # self.q_network(next_state_batch).max(dim=1): 在维度1上找到最大值，并返回最大值和最大值的索引
-                # self.q_network(next_state_batch).max(dim=1)[1]: 返回最大值的索引
-                # unsqueeze(1): 在维度1上增加一个维度，使其与action_batch的维度相同
-                # 选择下一个状态下的大Q值 | Select the maximum Q value for the next state
-                # next_actions = self.q_network(next_state_batch).max(dim=1)[1].unsqueeze(1)  # shape: (batch_size, 1)
-                next_actions = self.q_network(next_state_batch).argmax(dim=1, keepdim=True)  # shape: (batch_size, 1)
-                next_q_values = self.target_network(next_state_batch).gather(dim=1, index=next_actions)  # shape: (batch_size, 1)
-            else:
-                # 只有一个网络计算Q值 | Only one network calculates Q value
-                next_q_values = self.target_network(next_state_batch).max(dim=1)[0].unsqueeze(1)  # shape: (batch_size, 1)
+        if self.config['algorithm'] == 'c51':
+            current_dist = self.q_network(state_batch)
+            log_p = torch.log(current_dist[range(self.config['batch_size']), action_batch.squeeze()])
             
-        # reward_batch: shape: (batch_size, 1)
-        # done_batch: shape: (batch_size, 1)
-        # next_q_values: shape: (batch_size, 1)
-        # 每个采样点一个值 | One value for each sample point
-        # mask: 1 - done_batch: shape: (batch_size, 1)
-        expected_q_values = reward_batch + (1 - done_batch) * self.config['gamma'] * next_q_values  # shape: (batch_size, 1)
+            with torch.no_grad():
+                target_dist = self.target_network(next_state_batch)
+                if self.config['double_dqn']:
+                    next_actions = self.q_network(next_state_batch).sum(dim=2).argmax(dim=1)
+                else:
+                    next_actions = target_dist.sum(dim=2).argmax(dim=1)
+                
+                next_dist = target_dist[range(self.config['batch_size']), next_actions]
+                
+                t_z = reward_batch + (1 - done_batch) * self.config['gamma'] * self.q_network.support.unsqueeze(0)
+                t_z = t_z.clamp(self.config['v_min'], self.config['v_max'])
+                b = (t_z - self.config['v_min']) / ((self.config['v_max'] - self.config['v_min']) / (self.config['num_atoms'] - 1))
+                l = b.floor().long()
+                u = b.ceil().long()
+                
+                target_prob = torch.zeros_like(next_dist)
+                offset = torch.linspace(0, (self.config['batch_size'] - 1) * self.config['num_atoms'], self.config['batch_size']).long().unsqueeze(1).expand(self.config['batch_size'], self.config['num_atoms']).to(self.device)
+                
+                target_prob.view(-1).index_add_(0, (l + offset).view(-1), (next_dist * (u.float() - b)).view(-1))
+                target_prob.view(-1).index_add_(0, (u + offset).view(-1), (next_dist * (b - l.float())).view(-1))
+            
+            loss = -(target_prob * log_p).sum(1)
+            
+            # 计算q_values用于优先经验回放
+            q_values = (current_dist * self.q_network.support.unsqueeze(0).unsqueeze(0)).sum(2)
+            expected_q_values = (target_prob * self.q_network.support.unsqueeze(0)).sum(1)
+        else:   
+            q_values = self.q_network(state_batch).gather(1, action_batch)
+            
+            with torch.no_grad():
+                if self.config['double_dqn']:
+                    next_actions = self.q_network(next_state_batch).argmax(dim=1, keepdim=True)
+                    next_q_values = self.target_network(next_state_batch).gather(dim=1, index=next_actions)
+                else:
+                    next_q_values = self.target_network(next_state_batch).max(dim=1)[0].unsqueeze(1)
+            
+            expected_q_values = reward_batch + (1 - done_batch) * self.config['gamma'] * next_q_values
+            
+            loss = nn.MSELoss(reduction='none')(q_values, expected_q_values.detach())
         
-        # # 计算逐项损失 | Compute element-wise loss
-        loss = nn.MSELoss(reduction='none')(q_values, expected_q_values.detach())
         if weights is not None:
             loss = (loss * weights).mean()
         else:
@@ -218,8 +264,10 @@ class DQNAgent_Main(BaseDQNAgent):
         self.optimizer.step()
         
         if self.config['prioritized_replay']:
-            # td_errors = (q_values - expected_q_values).abs().detach().cpu().numpy()
-            td_errors = (q_values.detach() - expected_q_values).abs().cpu().numpy()
+            if self.config['algorithm'] == 'c51':
+                td_errors = (q_values.gather(1, action_batch).detach() - expected_q_values.unsqueeze(1)).abs().cpu().numpy()
+            else:
+                td_errors = (q_values.detach() - expected_q_values).abs().cpu().numpy()
             self.memory.update_priorities(indices, td_errors)
         
         self.update_steps += 1
@@ -232,7 +280,6 @@ class DQNAgent_Main(BaseDQNAgent):
         if self.use_noisy_net:
             self.q_network.reset_noise()
             self.target_network.reset_noise()
-            # 这里添加更新噪声因子
             for module in self.q_network.modules():
                 if isinstance(module, (DenseNoisyLinear, FactorizedNoisyLinear)):
                     module.step_update()
@@ -338,7 +385,7 @@ class DQNAgent_Main(BaseDQNAgent):
         # Load the model | 加载模型
         checkpoint = torch.load(path)
         self.config = checkpoint['config']
-        self._initialize_components()
+        self.init_networks()
         self.q_network.load_state_dict(checkpoint['q_network_state_dict'])
         self.target_network.load_state_dict(checkpoint['target_network_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])

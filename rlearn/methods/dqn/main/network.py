@@ -75,3 +75,21 @@ class DuelingDQN(DQNBase):
         value = self.value_stream(x)
         advantage = self.advantage_stream(x)
         return value + advantage - advantage.mean(dim=1, keepdim=True)
+
+class C51Network(DQNBase):
+    def __init__(self, state_dim, action_dim, num_atoms, v_min, v_max, use_noisy_net, noisy_net_type, noisy_net_std_init, noisy_net_k, min_exploration_factor=0.1, noise_decay=0.99):
+        super().__init__(state_dim, action_dim, use_noisy_net, noisy_net_type, noisy_net_std_init, noisy_net_k, noise_decay, min_exploration_factor)
+        self.num_atoms = num_atoms
+        self.v_min = v_min
+        self.v_max = v_max
+        self.support = torch.linspace(v_min, v_max, num_atoms)
+        
+        self.fc1 = self.get_linear(state_dim, 128)
+        self.fc2 = self.get_linear(128, 128)
+        self.fc3 = self.get_linear(128, action_dim * num_atoms)
+    
+    def forward(self, x):
+        x = torch.relu(self.fc1(x))
+        x = torch.relu(self.fc2(x))
+        x = self.fc3(x).view(-1, self.action_dim, self.num_atoms)
+        return torch.softmax(x, dim=2)
