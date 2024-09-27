@@ -26,7 +26,7 @@ pip install -e . # developing, please install in editable mode
 | ✅ | PolicyTableAgent  | v0.0.1 | Policy-Iteration Method (with Truncate option) [v0.0.1] | [demo](examples/demo_policy_table_agent.py)
 | ✅ | QTableAgent       | v0.0.1 | Tablar-Q-learning Method [on-policy] [v0.0.1] | [demo](examples/demo_q_table_agent.py)
 | ✅ | SarsaTableAgent   | v0.0.1 | SARSA Method [on-policy] [v0.0.1] | [demo](examples/demo_sarsa_table_agent.py) |
-| ✅ | DQNAgent_Main     | v0.1.2 | DQN-main<br> ✅ DQN-double option<br> ✅  DQN-dueling option<br> ✅ gradient-clip option<br> ✅ noisy-net option<br> ⬜ support cuda<br> ⬜ more tests<br> ⬜ doc | [demo](tests/methods/dqn/test_dqn_main.py) |
+| ✅ | DQNAgent_Main     | v0.1.2 | DQN-main<br> ✅ DQN-double option<br> ✅  DQN-dueling option<br> ✅ gradient-clip option<br> ✅ noisy-net option<br> ✅ C51 option<br> ⬜ support cuda<br> ⬜ more tests<br> ⬜ doc | [demo](tests/methods/dqn/test_dqn_main.py) |
 | ✅ | NStepQAgent       | v0.1.0 | N-Step Q-learning | [demo](tests/methods/table_ii/test_nstep_q.py) |
 | ✅ | NStepSarsaAgent   | v0.1.0 | N-Step SARSA | [demo](tests/methods/table_ii/test_nstep_sarsa.py) |
 | ⬜ | DQN-double        | v0.0.1 | DQN-double | 
