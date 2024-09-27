@@ -13,14 +13,18 @@ class BaseNoisyLinear(nn.Module):
                  out_features: int, 
                  init_method: str = 'kaiming',
                  std_init: float = 0.5,
-                 exploration_factor: float = 1.0):
+                 exploration_factor: float = 1.0,
+                 noise_decay: float = 0.99,
+                 min_exploration_factor: float = 0.1):
         super(BaseNoisyLinear, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.std_init = std_init
         self.init_method = init_method
         self.exploration_factor = exploration_factor
-        
+        self.noise_decay = noise_decay  # 初始化 noise_decay
+        self.min_exploration_factor = min_exploration_factor  # 初始化 min_exploration_factor
+
         self.weight_mu = nn.Parameter(torch.FloatTensor(out_features, in_features))
         self.weight_sigma = nn.Parameter(torch.FloatTensor(out_features, in_features))
         self.register_buffer('weight_epsilon', torch.FloatTensor(out_features, in_features))
@@ -65,6 +69,12 @@ class BaseNoisyLinear(nn.Module):
         else:
             return F.linear(input, self.weight_mu, self.bias_mu)
 
+    def update_noise_factor(self):
+        """更新噪声因子，应用衰减"""
+        self.exploration_factor *= self.noise_decay
+        self.exploration_factor = max(self.exploration_factor, self.min_exploration_factor)  # 使用 min_exploration_factor 参数
+        # print(f'{self.exploration_factor=}')
+
 class DenseNoisyLinear(BaseNoisyLinear):
     """
     DenseNoisyLinear class is a linear layer with added noise for exploration in neural networks.
@@ -75,26 +85,28 @@ class DenseNoisyLinear(BaseNoisyLinear):
                  out_features: int, 
                  init_method: str = 'kaiming',
                  std_init: float = 0.5,
-                 exploration_factor: float = 1.0):
-        super().__init__(in_features, out_features, init_method, std_init, exploration_factor)
+                 exploration_factor: float = 1.0,
+                 noise_decay: float = 0.99,
+                 min_exploration_factor: float = 0.1):
+        super().__init__(in_features, out_features, init_method, std_init, exploration_factor, noise_decay, min_exploration_factor)
         self.reset_noise()
 
     def reset_noise(self):
-        # 使用缩放后的噪声
-        self.weight_epsilon.copy_(self._scale_noise(self.weight_epsilon.size()))
-        self.bias_epsilon.copy_(self._scale_noise(self.bias_epsilon.size()))
+        # mu + sigma * epsilon
+        self.weight_epsilon.normal_()
+        self.bias_epsilon.normal_()
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         if self.training:
-            # 需要在程序里reset_noise
-            # NOTE: 如果此处没有clone，会报错
-            # weight = self.weight_mu + self.weight_sigma * self.weight_epsilon * self.exploration_factor
-            # bias = self.bias_mu + self.bias_sigma * self.bias_epsilon * self.exploration_factor
             weight = self.weight_mu + self.weight_sigma * self.weight_epsilon.clone() * self.exploration_factor
             bias = self.bias_mu + self.bias_sigma * self.bias_epsilon.clone() * self.exploration_factor
             return F.linear(input, weight, bias)
         else:
             return F.linear(input, self.weight_mu, self.bias_mu)
+    
+    def step_update(self):
+        """在每个训练步骤后更新噪声因子"""
+        self.update_noise_factor()
 
 class FactorizedNoisyLinear(BaseNoisyLinear):
     """
@@ -111,15 +123,16 @@ class FactorizedNoisyLinear(BaseNoisyLinear):
                  init_method: str = 'kaiming',
                  std_init: float = 0.5,
                  exploration_factor: float = 1.0,
-                 k: int = 1):
-        super().__init__(in_features, out_features, init_method, std_init, exploration_factor)
+                 k: int = 1,
+                 noise_decay: float = 0.99,
+                 min_exploration_factor: float = 0.1):
+        super().__init__(in_features, out_features, init_method, std_init, exploration_factor, noise_decay, min_exploration_factor)
         self.k = k  # 确保 k 被设置为实例属性
         self.register_buffer('epsilon_in', torch.FloatTensor(self.k, in_features))
         self.register_buffer('epsilon_out', torch.FloatTensor(self.k, out_features))
         self.reset_noise()  # 在初始化结束时调用 reset_noise
 
     def reset_noise(self):
-        # TODO: check 
         for i in range(self.k):
             self.epsilon_in[i] = self._scale_noise(self.in_features)
             self.epsilon_out[i] = self._scale_noise(self.out_features)
@@ -133,9 +146,12 @@ class FactorizedNoisyLinear(BaseNoisyLinear):
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         if self.training:
-            # 移除这里的 reset_noise 调用
             weight = self.weight_mu + self.weight_sigma * self.weight_epsilon.clone() * self.exploration_factor
             bias = self.bias_mu + self.bias_sigma * self.bias_epsilon.clone() * self.exploration_factor
             return F.linear(input, weight, bias)
         else:
             return F.linear(input, self.weight_mu, self.bias_mu)
+    
+    def step_update(self):
+        """在每个训练步骤后更新噪声因子"""
+        self.update_noise_factor()

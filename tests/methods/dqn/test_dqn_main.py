@@ -48,8 +48,9 @@ def test_dqn_main_noisy_net_dense():
         'max_grad_norm': 10,
         'use_noisy_net': True,
         'noisy_net_type': 'dense',
-        # 'noisy_net_std_init': 0.5,
-        'noisy_net_std_init': 1.0, # 太小导致无法收敛
+        'noisy_net_std_init': 1.0,
+        'noise_decay': 0.99,  # 新增：噪声衰减率
+        'min_exploration_factor': 0.1,  # 新增：噪声衰减的最小值
     }
     # 全量噪音收敛比较慢
     agent = DQNAgent_Main(env, config=config)
@@ -103,11 +104,11 @@ if __name__ == '__main__':
     if 0:
         # OK
         test_dqn_main_default()
-    if 0:
-        # OK
-        test_dqn_main_noisy_net_factorized()   
     if 1:
         test_dqn_main_noisy_net_dense()
+    if 0:
+        # OK
+        test_dqn_main_noisy_net_factorized()
     if 0:
         test_dqn_main_invalid_config()
     # pytest.main([__file__])

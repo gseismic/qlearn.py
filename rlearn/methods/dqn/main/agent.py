@@ -11,6 +11,7 @@ from rlearn.logger import user_logger
 from rlearn.methods.dqn.main.network import DQN, DuelingDQN
 from .base_agent import BaseDQNAgent
 from rlearn.methods.utils.monitor import RewardMonitor
+from rlearn.nets.core.noisy_linear import DenseNoisyLinear, FactorizedNoisyLinear
 
 class DQNAgent_Main(BaseDQNAgent):
     """Online DQN Agent
@@ -46,6 +47,8 @@ class DQNAgent_Main(BaseDQNAgent):
         dict(field='noisy_net_type', required=False, default='dense', rules=dict(type='str', choices=['dense', 'factorized'])),
         dict(field='noisy_net_std_init', required=False, default=0.5, rules=dict(type='float', gt=0)),
         dict(field='noisy_net_k', required=False, default=1, rules=dict(type='int', gt=0)),
+        dict(field='noise_decay', required=False, default=0.99, rules=dict(type='float', gt=0, max=1)),
+        dict(field='min_exploration_factor', required=False, default=0.1, rules=dict(type='float', gt=0)),
     ]
     
     def __init__(self, env, config=None, logger=None):
@@ -70,16 +73,56 @@ class DQNAgent_Main(BaseDQNAgent):
             self.logger.info(f"Noisy Net Std Init: {self.noisy_net_std_init}")
             if self.noisy_net_type == 'factorized':
                 self.logger.info(f"Noisy Net K: {self.noisy_net_k}")
+            self.noise_decay = self.config.get('noise_decay', 0.99)
+            self.min_exploration_factor = self.config.get('min_exploration_factor', 0.1)
+            self.logger.info(f"Noise Decay: {self.noise_decay}")
+            self.logger.info(f"Min Exploration Factor: {self.min_exploration_factor}")
         self.init_networks()
 
     def init_networks(self):
         if self.config['dueling_dqn']:
-            self.q_network = DuelingDQN(self.state_dim, self.action_dim, self.use_noisy_net, self.noisy_net_type, self.noisy_net_std_init, self.noisy_net_k)
-            self.target_network = DuelingDQN(self.state_dim, self.action_dim, self.use_noisy_net, self.noisy_net_type, self.noisy_net_std_init, self.noisy_net_k)
+            self.q_network = DuelingDQN(
+                self.state_dim, 
+                self.action_dim, 
+                self.use_noisy_net, 
+                self.noisy_net_type, 
+                self.noisy_net_std_init, 
+                self.noisy_net_k,
+                min_exploration_factor=self.min_exploration_factor,
+                noise_decay=self.noise_decay
+            )
+            self.target_network = DuelingDQN(
+                self.state_dim, 
+                self.action_dim, 
+                self.use_noisy_net, 
+                self.noisy_net_type, 
+                self.noisy_net_std_init, 
+                self.noisy_net_k,
+                min_exploration_factor=self.min_exploration_factor,
+                noise_decay=self.noise_decay
+            )
             self.logger.info(f"DuelingDQN initialized with state_dim: {self.state_dim}, action_dim: {self.action_dim}")
         else:
-            self.q_network = DQN(self.state_dim, self.action_dim, self.use_noisy_net, self.noisy_net_type, self.noisy_net_std_init, self.noisy_net_k)
-            self.target_network = DQN(self.state_dim, self.action_dim, self.use_noisy_net, self.noisy_net_type, self.noisy_net_std_init, self.noisy_net_k)
+            self.q_network = DQN(
+                self.state_dim, 
+                self.action_dim, 
+                self.use_noisy_net, 
+                self.noisy_net_type, 
+                self.noisy_net_std_init, 
+                self.noisy_net_k,
+                min_exploration_factor=self.min_exploration_factor,
+                noise_decay=self.noise_decay
+            )
+            self.target_network = DQN(
+                self.state_dim, 
+                self.action_dim, 
+                self.use_noisy_net, 
+                self.noisy_net_type, 
+                self.noisy_net_std_init, 
+                self.noisy_net_k,
+                min_exploration_factor=self.min_exploration_factor,
+                noise_decay=self.noise_decay
+            )
             self.logger.info(f"DQN initialized with state_dim: {self.state_dim}, action_dim: {self.action_dim}")
         
         self.target_network.load_state_dict(self.q_network.state_dict())
@@ -144,7 +187,7 @@ class DQNAgent_Main(BaseDQNAgent):
                 # self.q_network(next_state_batch).max(dim=1): 在维度1上找到最大值，并返回最大值和最大值的索引
                 # self.q_network(next_state_batch).max(dim=1)[1]: 返回最大值的索引
                 # unsqueeze(1): 在维度1上增加一个维度，使其与action_batch的维度相同
-                # 选择下一个状态下的最大Q值 | Select the maximum Q value for the next state
+                # 选择下一个状态下的大Q值 | Select the maximum Q value for the next state
                 # next_actions = self.q_network(next_state_batch).max(dim=1)[1].unsqueeze(1)  # shape: (batch_size, 1)
                 next_actions = self.q_network(next_state_batch).argmax(dim=1, keepdim=True)  # shape: (batch_size, 1)
                 next_q_values = self.target_network(next_state_batch).gather(dim=1, index=next_actions)  # shape: (batch_size, 1)
@@ -189,6 +232,13 @@ class DQNAgent_Main(BaseDQNAgent):
         if self.use_noisy_net:
             self.q_network.reset_noise()
             self.target_network.reset_noise()
+            # 这里添加更新噪声因子
+            for module in self.q_network.modules():
+                if isinstance(module, (DenseNoisyLinear, FactorizedNoisyLinear)):
+                    module.step_update()
+            for module in self.target_network.modules():
+                if isinstance(module, (DenseNoisyLinear, FactorizedNoisyLinear)):
+                    module.step_update()
     
     def learn(self, 
               num_episodes, 
