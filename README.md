@@ -32,7 +32,7 @@ pip install -e . # developing, please install in editable mode
 | ⬜ | DQN-double        | v0.0.1 | DQN-double | 
 | ⬜ | DDPG              | v0.0.0 | DDPG | 
 | ⬜ | HER               | v0.0.0 | Hindsight Experience Replay | 
-| ✅ | MCPGAgent_Naive   | v0.0.1 | Monte-Carlo Policy Gradient | [demo](examples/demo_mc_pg_agent.py) |
+| ✅ | MCPGAgent_Naive   | v0.1.0 | Monte-Carlo(REINFORCE) Policy Gradient | [demo](tests/methods/mcpg/test_mcpg_naive.py) |
 | ⬜ | TRPO              | v0.0.0 | Trust Region Policy Optimization
 | ⬜ | PPO               | v0.0.0 | Proximal Policy Optimization
 | ⬜ | A2C               | v0.0.0 | Advantage Actor-Critic
@@ -45,6 +45,10 @@ pip install -e . # developing, please install in editable mode
 | ⬜ | [PETS](https://arxiv.org/abs/2203.05442) | v0.0.0 | Parameter Efficient Twin Delayed DDPG
 
 ## TODOs
+- [x] learn-seed设计: 应参照 MCPGAgent_Naive
+- [ ] `examples` not updated
+- [ ] set check-freq of monitor | 设置monitor的check-freq
+- [ ] custom PolicyNet
 - [ ] unified interface for all methods | 为所有方法统一接口
 - [ ] DQN-main: interface not stable & not tested on GPU | DQN-main: 接口不稳定且未在GPU上测试
 - [ ] QTableAgent.learn(): return rewards-list | QTableAgent.learn(): 返回奖励列表

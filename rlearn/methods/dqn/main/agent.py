@@ -12,6 +12,7 @@ from rlearn.methods.dqn.main.network import DQN, DuelingDQN, C51Network
 from .base_agent import BaseDQNAgent
 from rlearn.methods.utils.monitor import RewardMonitor
 from rlearn.nets.core.noisy_linear import DenseNoisyLinear, FactorizedNoisyLinear
+from rlearn.utils.seed import seed_all
 
 class DQNAgent_Main(BaseDQNAgent):
     """Online DQN Agent
@@ -55,10 +56,11 @@ class DQNAgent_Main(BaseDQNAgent):
         dict(field='v_max', required=False, default=10.0, rules=dict(type='float')),  # 新增: C51 分布的最大值
     ]
     
-    def __init__(self, env, config=None, logger=None):
+    def __init__(self, env, config=None, logger=None, seed=None):
         self.state_dim = np.prod(env.observation_space.shape)
         self.action_dim = env.action_space.n
         super().__init__(env, config, logger)
+        self.try_seed_all(seed)
         self.epsilon = self.config['epsilon_start']
         self.update_steps = 0
         self.logger.info(f"DQNAgent_Main initialized with state_dim: {self.state_dim}, action_dim: {self.action_dim}")
@@ -83,6 +85,12 @@ class DQNAgent_Main(BaseDQNAgent):
         self.logger.info(f"Min Exploration Factor: {self.min_exploration_factor}")
         self.init_networks()
 
+    def try_seed_all(self, seed):
+        if seed is not None:
+            seed_all(seed)
+            self.env.reset(seed=seed)
+            self.env.action_space.seed(seed)
+            
     def init_networks(self):
         if self.config['algorithm'] == 'c51':
             self.q_network = C51Network(
@@ -307,6 +315,8 @@ class DQNAgent_Main(BaseDQNAgent):
             - 当设置max_total_steps时，num_episodes和max_step_per_episode将失效
             - 当设置target_reward时，num_episodes和max_step_per_episode将失效
         """
+        self.try_seed_all(seed)
+        
         self.q_network.to(self.device)
         self.target_network.to(self.device) 
         
@@ -320,7 +330,7 @@ class DQNAgent_Main(BaseDQNAgent):
         
         should_stop = False
         for episode_idx in range(num_episodes):
-            state, _ = self.env.reset(seed=seed)
+            state, _ = self.env.reset() # do NOT use seed
             self.monitor.before_episode_start()
             
             done = False

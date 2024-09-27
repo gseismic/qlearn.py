@@ -4,11 +4,12 @@ from collections import deque
 from cfgdict import make_config
 from rlearn.methods.utils.monitor import RewardMonitor
 from rlearn.logger import user_logger
+from rlearn.utils.seed import seed_all
 
 class BaseAgent:
     schema = []
 
-    def __init__(self, env, config=None, logger=None):
+    def __init__(self, env, config=None, logger=None, seed=None):
         self.env = env
         self.logger = logger or user_logger
         self.config = make_config(config, schema=self.schema,
@@ -18,9 +19,16 @@ class BaseAgent:
         self.monitor = None
         self.n_states = self.env.observation_space.n
         self.n_actions = self.env.action_space.n
+        self.try_seed_all(seed)
         self.Q_table = torch.zeros(self.n_states, self.n_actions)
         self.gamma = self.config['gamma']
         self.logger.info(f'Config: {self.config}')
+    
+    def try_seed_all(self, seed):
+        if seed is not None:
+            seed_all(seed)
+            self.env.reset(seed=seed)
+            self.env.action_space.seed(seed)
 
     def select_action(self, state):
         raise NotImplementedError("This method should be overridden by subclasses")
@@ -45,9 +53,7 @@ class BaseAgent:
             - seed: 随机种子 | Random seed
         Returns: None
         """
-        if seed is not None:
-            np.random.seed(seed)
-            torch.manual_seed(seed)
+        self.try_seed_all(seed)
         
         self.monitor = RewardMonitor(
             max_step_per_episode=max_step_per_episode,
@@ -60,8 +66,9 @@ class BaseAgent:
         should_stop = False
         for episode_idx in range(num_episodes):
             trajectory = deque(maxlen=self.config['n_step'])
-            state, _ = self.env.reset(seed=seed)
+            state, _ = self.env.reset()
             self.monitor.before_episode_start()
+            
             done = False
             while not done:
                 action = self.select_action(state)
@@ -109,7 +116,7 @@ class BaseAgent:
             if episode_idx == num_episodes - 1:
                 self.logger.warning(f"Reached the maximum number of episodes: {num_episodes}")
         
-                 
+        # exit-info
         exit_info = {
             "reward_list": self.monitor.all_episode_rewards
         }
