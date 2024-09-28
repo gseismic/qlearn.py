@@ -25,7 +25,7 @@ class RewardMonitor(BaseMonitor):
         self.episode_reward = 0
         self.total_steps = 0
         
-    def after_step_env(self, next_state, reward, terminated, truncated, info):
+    def after_env_step(self, next_state, reward, terminated, truncated, info):
         self.episode_steps += 1
         self.episode_reward += reward
         self.total_steps += 1
@@ -35,7 +35,7 @@ class RewardMonitor(BaseMonitor):
         self.all_episode_rewards.append(self.episode_reward)
         
     def check_exit_conditions(self):
-        exit_episode = False    
+        exit_episode = False
         if self.max_step_per_episode is not None and self.episode_steps >= self.max_step_per_episode:
             exit_episode = True
         

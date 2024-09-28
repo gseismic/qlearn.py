@@ -94,7 +94,7 @@ class MCPGAgent_Naive(BaseAgent):
             while not done:
                 action = self.select_action(state)
                 next_state, reward, terminated, truncated, info = self.env.step(action)
-                self.monitor.after_step_env(next_state, reward, terminated, truncated, info)
+                self.monitor.after_env_step(next_state, reward, terminated, truncated, info)
                 
                 done = terminated or truncated
                 states.append(state)

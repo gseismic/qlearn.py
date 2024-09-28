@@ -1,11 +1,12 @@
-from rlearn.methods.qac.base_agent import BaseLearnAgent
 import torch
 import torch.optim as optim
 import numpy as np
-from rlearn.methods.qac.naive.network import get_network
+from rlearn.methods.qac.main.network import get_network
 from rlearn.methods.utils.optimizer import get_optimizer
+from rlearn.nets.complex.acnet.api import get_acnet
+from rlearn.core.agent.main import OnlineAgent
 
-class QACAgent_Naive(BaseLearnAgent):
+class QACAgent(OnlineAgent):
     """
     实现了一个结合 Actor-Critic 和 SARSA 的强化学习智能体。
 
@@ -29,7 +30,7 @@ class QACAgent_Naive(BaseLearnAgent):
                 'init_type': 'kaiming',
                 'use_noisy': False,
                 'factorized': True,
-                'rank': 0,
+                'rank': 1,
                 'std_init': 0.4,
                 'use_softmax': True,
             }
@@ -43,9 +44,10 @@ class QACAgent_Naive(BaseLearnAgent):
         dict(field='gamma', required=False, default=0.99, rules=dict(type='float', gt=0, lt=1)),
         dict(field='device', required=False, default='cpu', rules=dict(type='str', choices=['cpu', 'cuda'])),
         dict(field='verbose_freq', required=False, default=10, rules=dict(type='int', gt=0)),
-        dict(field='noise_level', required=False, default=0.0, rules=dict(type='float', ge=0)),
         dict(field='initial_noise_scale', required=False, default=0.0, rules=dict(type='float', ge=0)),
         dict(field='noise_decay', required=False, default=1.0, rules=dict(type='float', gt=0, lt=1)),
+        dict(field='noise_min', required=False, default=0.1, rules=dict(type='float', ge=0)),
+        dict(field='use_softmax', required=False, default=True, rules=dict(type='bool')),
     ]
 
     def init(self):
@@ -55,14 +57,14 @@ class QACAgent_Naive(BaseLearnAgent):
         policy_net_params = self.config['policy_net']['params']
         policy_net_params.setdefault('use_noisy', False)
         policy_net_params.setdefault('factorized', True)
-        policy_net_params.setdefault('rank', 0)
+        policy_net_params.setdefault('rank', 1)
         policy_net_params.setdefault('std_init', 0.4)
         
         self.ac_model = get_network(
             self.state_dim, 
             self.action_dim, 
-            self.config['policy_net'],
-            self.config['noise_level']
+            self.config['policy_net']['type'],
+            **self.config['policy_net']['params']
         ).to(self.config['device'])
         
         self.optimizer = get_optimizer(
@@ -81,6 +83,7 @@ class QACAgent_Naive(BaseLearnAgent):
         self.noise_decay = self.config['noise_decay']
         self.use_softmax = self.config['policy_net']['params'].get('use_softmax', True)
         self.use_noisy = self.config['policy_net']['params'].get('use_noisy', False)
+        self.device = torch.device(self.config.get('device', 'cpu') if torch.cuda.is_available() else 'cpu')
 
     def select_action(self, state, **kwargs):
         if len(state.shape) == 1:
@@ -144,9 +147,10 @@ class QACAgent_Naive(BaseLearnAgent):
         if len(self.total_rewards) % self.verbose_freq == 0:
             avg_reward = np.mean(self.total_rewards[-self.verbose_freq:])
             print(f"Average reward (last {self.verbose_freq} episodes): {avg_reward:.2f}")
-        self.noise_scale *= self.noise_decay
-        self.ac_model.set_noise_scale(self.noise_scale)
+        self.update_noise_scale(self.noise_scale*self.noise_decay)
 
     def update_noise_scale(self, scale):
         self.noise_scale = scale
+        if self.noise_scale < self.noise_min:
+            self.noise_scale = self.noise_min
         self.ac_model.set_noise_scale(scale)

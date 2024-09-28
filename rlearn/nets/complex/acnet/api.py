@@ -3,23 +3,21 @@ from .main.acnet_mlp import ACNet_MLP
 from .main.acnet_cnn import ACNet_CNN
 
 # 修改 get_network 函数以包含新的网络类型
-def get_acnet(tag, state_dim, action_dim, net_type, policy_net_config, noise_level):
+def get_acnet(tag, state_dim, action_dim, net_type, **net_params):
     if tag == 'main':
-        params = policy_net_config['params']
-        
         if net_type == 'MLP':
             return ACNet_MLP(
                 state_dim,
                 action_dim,
-                params['hidden_dims'],
-                params['activation'],
-                params['init_type'],
-                params['use_noisy'],
-                params['factorized'],
-                params['rank'],
-                params['std_init'],
-                params['use_softmax'],
-                noise_level
+                **net_params,
+                # params['hidden_dims'],
+                # params['activation'],
+                # params['init_type'],
+                # params['use_noisy'],
+                # params['factorized'],
+                # params['rank'],
+                # params['std_init'],
+                # params['use_softmax'],
             )
         elif net_type == 'CNN':
             if isinstance(state_dim, (tuple, list)):
@@ -35,16 +33,16 @@ def get_acnet(tag, state_dim, action_dim, net_type, policy_net_config, noise_lev
             return ACNet_CNN(
                 input_channels,
                 action_dim,
-                params['conv_layers'],
-                params['hidden_dims'],
-                params['activation'],
-                params['init_type'],
-                params['use_noisy'],
-                params['factorized'],
-                params['rank'],
-                params['std_init'],
-                params['use_softmax'],
-                noise_level
+                **net_params,
+                # params['conv_layers'],
+                # params['hidden_dims'],
+                # params['activation'],
+                # params['init_type'],
+                # params['use_noisy'],
+                # params['factorized'],
+                # params['rank'],
+                # params['std_init'],
+                # params['use_softmax'],
             )
         else:
             raise ValueError(f"Unsupported network type: {net_type}")
