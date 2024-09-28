@@ -1,13 +1,14 @@
 from typing import List, Optional
 import torch
 import torch.nn as nn
-from ...utils.module import get_activation, get_initializer
+from ...utils.activation import get_activation
+from ...utils.initializer import get_initializer
 from ...linear.api import get_linear, is_linear, is_noisy_linear
 
 class MLP(nn.Module):
     linear_tag = 'main'
     def __init__(self, input_dim: int, output_dim: int, hidden_dims: List[int], activation: str = 'relu', init_type: str = 'kaiming', 
-                 use_noisy: bool = False, factorized: bool = True, rank: int = 0, std_init: float = 0.4, noise_level: float = 1.0, output_activation: Optional[str] = None):
+                 use_noisy: bool = False, factorized: bool = True, rank: int = 0, std_init: float = 0.4, output_activation: Optional[str] = None):
         super(MLP, self).__init__()
         self.activation = get_activation(activation)
         self.initializer = get_initializer(init_type)
@@ -22,8 +23,7 @@ class MLP(nn.Module):
                 'noisy': use_noisy, 
                 'factorized': factorized, 
                 'rank': rank, 
-                'std_init': std_init, 
-                'noise_level': noise_level
+                'std_init': std_init
             }))
             layers.append(self.activation)
             in_dim = hidden_dim
@@ -34,8 +34,7 @@ class MLP(nn.Module):
             'noisy': use_noisy, 
             'factorized': factorized, 
             'rank': rank, 
-            'std_init': std_init, 
-            'noise_level': noise_level
+            'std_init': std_init
         }))
         
         if self.output_activation:
