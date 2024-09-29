@@ -1,17 +1,32 @@
 from abc import ABC, abstractmethod
 import time
-from collections import deque
 from loguru import logger as default_logger
 from i18n import get_text
 from exit_monitor import ExitMonitor
 from pathlib import Path
 import uuid
+import torch
+from trajectory_recorder import TrajectoryRecorder
 
 class BaseAgent(ABC):
-    def __init__(self, env, config, logger=None):
+    def __init__(self, env, config, logger=None, seed=None):
         self.env = env
         self.config = config or {}
         self.logger = logger or default_logger
+        self.seed_all(seed)
+    
+    def seed_all(self, seed):
+        self._seed = seed
+        self.env.reset(seed=seed)
+        if seed is None:
+            torch.seed()
+        else:
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+            if torch.cuda.is_available() and seed is not None:
+                torch.backends.cudnn.deterministic = True
+                torch.backends.cudnn.benchmark = False
 
     @abstractmethod
     def select_action(self, state):
@@ -66,14 +81,18 @@ class BaseAgent(ABC):
         total_steps = 0
         start_time = time.time()
 
+        trajectory_recorder = TrajectoryRecorder()
+
         while True:
             state, _ = self.env.reset()
+            trajectory_recorder.start_episode(state)
             episode_reward = 0
             episode_steps = 0
 
             while True:
                 action = self.select_action(state)
-                next_state, reward, done, truncated, _ = self.env.step(action)
+                next_state, reward, done, truncated, info = self.env.step(action)
+                trajectory_recorder.record_step(state, action, next_state, reward, done, truncated, info)
                 episode_reward += reward
 
                 self.step(state, action, reward, next_state, done)
@@ -85,6 +104,7 @@ class BaseAgent(ABC):
                 if done or truncated or (max_episode_steps and episode_steps >= max_episode_steps):
                     break
 
+            trajectory_recorder.end_episode()
             rewards_history.append(episode_reward)
             episode_lengths.append(episode_steps)
             should_exit, exit_reason = exit_monitor.should_exit(episode_reward)
@@ -128,5 +148,7 @@ class BaseAgent(ABC):
             'best_avg_reward': exit_monitor.best_avg_reward,
             'last_avg_reward': sum(rewards_history[-reward_window_size:]) / min(reward_window_size, len(rewards_history))
         }
+
+        training_info['full_trajectory'] = trajectory_recorder.get_full_trajectory()
 
         return training_info

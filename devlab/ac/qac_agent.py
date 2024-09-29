@@ -59,11 +59,19 @@ class QACAgent(BaseAgent):
 
         return td_error.item()
 
-    def predict(self, state):
+    def predict(self, state, deterministic=False):
         with torch.no_grad():
             state_tensor = torch.FloatTensor(state).unsqueeze(0)
-            action_probs, _ = self.model(state_tensor)
-            return action_probs.argmax().item()
+            action_probs, value = self.model(state_tensor)
+            if deterministic:
+                action = action_probs.argmax().item()
+            else:
+                action = np.random.choice(len(action_probs.squeeze()), p=action_probs.detach().numpy().squeeze())
+            info = {
+                'action_probs': action_probs.squeeze().tolist(),
+                'value': value.item()
+            }
+            return action, info
 
     def save(self, path):
         path = Path(path)

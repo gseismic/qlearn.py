@@ -39,7 +39,7 @@ def main():
         'improvement_ratio_threshold': None,
         'checkpoint_freq': 100,
         'checkpoint_path': Path('checkpoints'),
-        'final_model_path': Path('models') / 'final_model.pth',
+        'final_model_path': Path('final_models') / 'final_model.pth',
         'lang': 'zh'
     }
 
@@ -63,6 +63,41 @@ def main():
         print(f"{key}: {value}")
 
     env.close()
+
+    # 测试加载的模型
+    test_load_model(env, training_info['final_model_path'])
+
+def test_load_model(env, model_path, num_episodes=10):
+    config = {
+        'model_type': 'IndependentActorCriticMLP',
+        'model_kwargs': {
+            'hidden_sizes': [64, 64],
+            'activation': 'relu',
+        },
+        'optimizer': 'adam',
+        'optimizer_kwargs': {'lr': 0.0003},
+        'gamma': 0.99
+    }
+    
+    agent = QACAgent(env, config=config)
+    agent.load(model_path)
+    
+    total_rewards = []
+    for _ in range(num_episodes):
+        state, _ = env.reset()
+        episode_reward = 0
+        done = False
+        while not done:
+            action, _ = agent.predict(state, deterministic=True)
+            state, reward, done, truncated, _ = env.step(action)
+            episode_reward += reward
+            if truncated:
+                break
+        total_rewards.append(episode_reward)
+    
+    avg_reward = sum(total_rewards) / num_episodes
+    print(f"Average reward over {num_episodes} episodes: {avg_reward}")
+    return avg_reward
 
 if __name__ == "__main__":
     main()
