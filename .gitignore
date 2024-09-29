@@ -1,4 +1,5 @@
 drafts/
+checkpoints/
 *.pth
 backup/
 # Byte-compiled / optimized / DLL files
