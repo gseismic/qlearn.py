@@ -1,16 +1,11 @@
 from abc import abstractmethod
 from rlearn.methods.utils.monitor import get_monitor
 from rlearn.core.agent.main.base import BaseAgent
-import os
+from pathlib import Path
+from typing import Dict, Any
 
-# RequiredField
-# Field('monitor', required=True, help='Monitor config')
-# Field('verbose_freq', required=False, default=10, help='Frequency of logging')
 class OnlineAgent(BaseAgent):
-    schema = [
-        # Field('monitor', type=dict, default=None, help='Monitor config'),
-        # Field('verbose_freq', type=int, default=10, help='Frequency of logging')
-    ]
+    schema = [  ]
 
     def __init__(self, env, config=None, logger=None, seed=None):
         super().__init__(env, config, logger, seed)
@@ -22,7 +17,8 @@ class OnlineAgent(BaseAgent):
         self.verbose_freq = self.config.get('verbose_freq', 10)
         self.checkpoint_dir = self.config.get('checkpoint_dir', None)
         self.checkpoint_freq = self.config.get('checkpoint_freq', None)
-        os.makedirs(self.checkpoint_dir, exist_ok=True)
+        if self.checkpoint_dir is not None:
+            Path(self.checkpoint_dir).mkdir(parents=True, exist_ok=True)
         self.init()
     
     def init(self):
@@ -49,13 +45,13 @@ class OnlineAgent(BaseAgent):
     def after_learn_done(self, exit_info):
         pass
     
-    def learn(self, num_episodes, **kwargs):
+    def learn(self, num_episodes: int, **kwargs) -> Dict[str, Any]:
         self.logger.info(f"Start learning")
 
         self.before_learn()
         should_exit_learning = False
         for episode_idx in range(num_episodes):
-            state, _ = self.env.reset()
+            state, info = self.env.reset()
             self.monitor.before_episode_start()
             self.before_episode_start(state, info, **kwargs)
 
@@ -96,6 +92,19 @@ class OnlineAgent(BaseAgent):
         self.logger.info(f"Exit Info: {exit_info}")
         self.after_learn_done(exit_info)
         return exit_info
+    
+    def state_dict(self):
+        pass
+    
+    def load_state_dict(self, state_dict):
+        pass
 
     def save_checkpoint(self, episode_idx):
+        # filename = os.path.join(self.checkpoint_dir, f"checkpoint_{episode_idx}.pth")
+        # torch.save(self.ac_model.state_dict(), filename)
+        pass
+    
+    def load_checkpoint(self, episode_idx):
+        # filename = os.path.join(self.checkpoint_dir, f"checkpoint_{episode_idx}.pth")
+        # self.ac_model.load_state_dict(torch.load(filename))
         pass

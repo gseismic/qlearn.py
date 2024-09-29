@@ -7,6 +7,11 @@
 - SARSA法估计q(s_t, a_t)
     - actor-critic
         - [QAC] 仅为原理展示
+
+## 优势演员-评论家 | Advantage Actor-Critic
+可行性：减掉基线不影响策略梯度
+优势：有助于减少梯度方差
+
 - PPO
 - AC
     A2C

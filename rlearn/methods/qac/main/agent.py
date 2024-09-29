@@ -1,7 +1,6 @@
 import torch
 import torch.optim as optim
 import numpy as np
-from rlearn.methods.qac.main.network import get_network
 from rlearn.methods.utils.optimizer import get_optimizer
 from rlearn.nets.complex.acnet.api import get_acnet
 from rlearn.core.agent.main import OnlineAgent
@@ -25,9 +24,9 @@ class QACAgent(OnlineAgent):
         dict(field='policy_net', required=False, default={
             'type': 'MLP',
             'params': {
-                'hidden_dims': [128, 128],
+                'hidden_dims': [12, 12],
                 'activation': 'relu',
-                'init_type': 'kaiming',
+                'init_type': 'kaiming_uniform',
                 'use_noisy': False,
                 'factorized': True,
                 'rank': 1,
@@ -45,9 +44,9 @@ class QACAgent(OnlineAgent):
         dict(field='device', required=False, default='cpu', rules=dict(type='str', choices=['cpu', 'cuda'])),
         dict(field='verbose_freq', required=False, default=10, rules=dict(type='int', gt=0)),
         dict(field='initial_noise_scale', required=False, default=0.0, rules=dict(type='float', ge=0)),
-        dict(field='noise_decay', required=False, default=1.0, rules=dict(type='float', gt=0, lt=1)),
+        dict(field='noise_decay', required=False, default=0.995, rules=dict(type='float', gt=0, lt=1)),
         dict(field='noise_min', required=False, default=0.1, rules=dict(type='float', ge=0)),
-        dict(field='use_softmax', required=False, default=True, rules=dict(type='bool')),
+        # dict(field='use_softmax', required=False, default=False, rules=dict(type='bool')),
     ]
 
     def init(self):
@@ -60,10 +59,14 @@ class QACAgent(OnlineAgent):
         policy_net_params.setdefault('rank', 1)
         policy_net_params.setdefault('std_init', 0.4)
         
-        self.ac_model = get_network(
+        # print(self.config)
+        # assert 0
+        self.ac_model = get_acnet(
+            'main',
             self.state_dim, 
             self.action_dim, 
             self.config['policy_net']['type'],
+            # use_softmax=self.config['policy_net']['params'].get('use_softmax', True),  # 传递给 get_acnet
             **self.config['policy_net']['params']
         ).to(self.config['device'])
         
@@ -81,28 +84,39 @@ class QACAgent(OnlineAgent):
         self.device = self.config['device']
         self.verbose_freq = self.config['verbose_freq']
         self.noise_decay = self.config['noise_decay']
-        self.use_softmax = self.config['policy_net']['params'].get('use_softmax', True)
         self.use_noisy = self.config['policy_net']['params'].get('use_noisy', False)
         self.device = torch.device(self.config.get('device', 'cpu') if torch.cuda.is_available() else 'cpu')
 
     def select_action(self, state, **kwargs):
-        if len(state.shape) == 1:
-            state = torch.FloatTensor(state).unsqueeze(0).to(self.device)  # shape: [1, state_dim]
-        elif len(state.shape) == 3:
-            state = torch.FloatTensor(state).unsqueeze(0).permute(0, 3, 1, 2).to(self.device)  # shape: [1, channels, height, width]
+        # print(f'{state=}')
+        # state=tensor([[ 0.0274, -0.5422,  0.0274,  0.9127]])
+        # state=array([ 0.02743724, -0.5421681 ,  0.0274025 ,  0.91272134], dtype=float32)
+        if not isinstance(state, torch.Tensor):
+            if len(state.shape) == 1:
+                state = torch.FloatTensor(state).unsqueeze(0).to(self.device)  # shape: [1, state_dim]
+            elif len(state.shape) == 3:
+                state = torch.FloatTensor(state).unsqueeze(0).permute(0, 3, 1, 2).to(self.device)  # shape: [1, channels, height, width]
+            else:
+                raise ValueError("Unsupported state dimension")
         else:
-            raise ValueError("Unsupported state dimension")
+            # 如果已经是张量，确保它在正确的设备上
+            state = state.to(self.device)
         
+        # NOTE:
         probs, _ = self.ac_model(state)  # probs shape: [1, action_dim]
-        if self.use_softmax:
-            action = torch.multinomial(probs, 1).item()
+        
+        if np.random.rand() < 0.1:
+            action = np.random.choice(self.action_dim)
         else:
             action = probs.argmax().item()
-        
+        # if self.config['greedy']:
+        #     action = probs.argmax().item()
+        # else:
+        #     action = torch.multinomial(probs, 1).item()
         self.next_action = action  # 存储下一个动作
         return action
 
-    def after_step(self, state, action, reward, next_state, terminated, truncated, info, **kwargs):
+    def after_env_step(self, state, action, reward, next_state, terminated, truncated, info, **kwargs):
         self.episode_reward += reward
 
         if len(state.shape) == 1:
@@ -117,18 +131,26 @@ class QACAgent(OnlineAgent):
         probs, state_value = self.ac_model(state)  # probs shape: [1, action_dim], state_value shape: [1, 1]
         next_probs, next_state_value = self.ac_model(next_state)  # next_probs shape: [1, action_dim], next_state_value shape: [1, 1]
         
-        if self.use_softmax:
-            q_value = state_value + torch.log(probs[0, action])  # shape: [1, 1]
-            q_next = next_state_value + torch.log(next_probs[0, self.next_action])  # shape: [1, 1]
-            actor_loss = -torch.log(probs[0, action]) * td_error.detach()  # shape: [1]
-        else:
-            q_value = probs[0, action]  # shape: [1]
-            q_next = next_probs[0, self.next_action]  # shape: [1]
-            actor_loss = -probs[0, action] * td_error.detach()  # shape: [1]
+        # if self.config['policy_net']['params'].get('use_softmax', True):
+        #     q_value = state_value + torch.log(probs[0, action])  # shape: [1, 1]
+        #     q_next = next_state_value + torch.log(next_probs[0, self.next_action])  # shape: [1, 1]
+        # else:
+        # print(f'{probs=}')
+        # probs=tensor([[ 7.0141, -0.1069]], grad_fn=<AddmmBackward0>)
+        q_value = probs[0, action]  # shape: [1]
+        q_next = next_probs[0, self.next_action]  # shape: [1]
         
-        q_target = reward + self.gamma * q_next * (1 - terminated)  # shape: [1, 1] or [1] depending on q_next
+        done = terminated or truncated
+        q_target = reward + self.gamma * q_next * (1 - done)  # shape: [1, 1] or [1] depending on q_next
         td_error = q_target.detach() - q_value  # shape: [1, 1] or [1] depending on q_value and q_target
         critic_loss = td_error.pow(2)  # shape: [1, 1] or [1] depending on td_error
+        
+        actor_loss = -torch.log(probs[0, action]) * td_error.detach()  # shape: [1]
+        # print(f'**{self.use_softmax}')
+        # if self.use_softmax:
+        #     actor_loss = -torch.log(probs[0, action]) * td_error.detach()  # shape: [1]
+        # else:
+        # actor_loss = -probs[0, action] * td_error.detach()  # shape: [1]
         loss = actor_loss + critic_loss  # shape: [1] or scalar
 
         self.optimizer.zero_grad()
@@ -151,6 +173,12 @@ class QACAgent(OnlineAgent):
 
     def update_noise_scale(self, scale):
         self.noise_scale = scale
-        if self.noise_scale < self.noise_min:
-            self.noise_scale = self.noise_min
+        if self.noise_scale < self.config['noise_min']:
+            self.noise_scale = self.config['noise_min']
         self.ac_model.set_noise_scale(scale)
+        
+    def load(self, path):
+        self.ac_model.load_state_dict(torch.load(path))
+    
+    def save(self, path):
+        torch.save(self.ac_model.state_dict(), path)
