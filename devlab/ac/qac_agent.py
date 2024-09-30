@@ -14,14 +14,13 @@ class QACAgent(BaseAgent):
     critic网络: 价值判断, 用TD方法约束q(s_t, a_t)
     """
     
-    def __init__(self, env, config, logger=None):
-        super().__init__(env, config, logger=logger)
-        if 'gamma' not in self.config:
-            raise ValueError("gamma必须在config中明确指定")
-        self.gamma = self.config['gamma']
-        self.build_model()
+    def __init__(self, env, config, logger=None, seed=None):
+        super().__init__(env, config, logger=logger, seed=seed)
     
-    def build_model(self):
+    def initialize(self):
+        if 'gamma' not in self.config:
+            raise ValueError("`gamma` is not set")
+        self.gamma = self.config['gamma']
         state_dim = self.env.observation_space.shape[0]
         action_dim = self.env.action_space.n
         self.model = get_model(state_dim, action_dim, 
@@ -85,6 +84,6 @@ class QACAgent(BaseAgent):
     def load(self, path):
         checkpoint = torch.load(path)
         self.config.update(checkpoint['config'])
-        self.build_model()
+        self.initialize()
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])

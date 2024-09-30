@@ -3,7 +3,12 @@ import time
 from i18n import get_text
 
 
-def eval_agent_performance(agent, env, num_episodes=100, max_steps=1000, lang='zh'):
+def eval_agent_performance(agent, 
+                           env, 
+                           num_episodes=100, 
+                           max_steps=1000, 
+                           deterministic=False,
+                           lang='en'):
     """
     测试agent的性能
     
@@ -24,7 +29,7 @@ def eval_agent_performance(agent, env, num_episodes=100, max_steps=1000, lang='z
         state, _ = env.reset()
         episode_reward = 0
         for step in range(max_steps):
-            action, _ = agent.predict(state)
+            action, _ = agent.predict(state, deterministic=deterministic)
             next_state, reward, done, truncated, _ = env.step(action)
             episode_reward += reward
             state = next_state

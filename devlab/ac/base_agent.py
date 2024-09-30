@@ -14,7 +14,8 @@ class BaseAgent(ABC):
         self.config = config or {}
         self.logger = logger or default_logger
         self.seed_all(seed)
-    
+        self.initialize()
+
     def seed_all(self, seed):
         self._seed = seed
         self.env.reset(seed=seed)
@@ -27,6 +28,10 @@ class BaseAgent(ABC):
             if torch.cuda.is_available() and seed is not None:
                 torch.backends.cudnn.deterministic = True
                 torch.backends.cudnn.benchmark = False
+
+    @abstractmethod
+    def initialize(self):
+        raise NotImplementedError()
 
     @abstractmethod
     def select_action(self, state):
@@ -42,6 +47,10 @@ class BaseAgent(ABC):
 
     @abstractmethod
     def load(self, path):
+        raise NotImplementedError()
+    
+    @abstractmethod
+    def predict(self, state, deterministic=False):
         raise NotImplementedError()
 
     def learn(self, 

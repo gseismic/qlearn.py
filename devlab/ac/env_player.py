@@ -1,6 +1,6 @@
 from typing import Any, Tuple, Dict
 
-class Player:
+class EnvPlayer:
     def __init__(self, trajectory):
         self.trajectory = trajectory
         self.current_episode = 0
@@ -24,5 +24,3 @@ class Player:
 
     def close(self):
         pass
-
-    # 添加其他需要的环境方法和属性
