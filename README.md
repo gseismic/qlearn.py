@@ -1,6 +1,12 @@
 # rlearn.py
 Reinforcement Learning Library [developing...]
 
+** 
+DevLab moved to [https://github.com/gseismic/rlearn_dev.py](https://github.com/gseismic/rlearn_dev.py)
+**
+
+**Code Not READY, do NOT use this repo.** 
+
 ## Installation
 ```bash
 cd rlearn.py
